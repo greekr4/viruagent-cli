@@ -6,6 +6,18 @@ const readline = require('readline');
 const path = require('path');
 const { saveProviderMeta, clearProviderMeta, getProviderMeta } = require('../storage/sessionStore');
 const createTistoryApiClient = require('../services/tistoryApiClient');
+const IMAGE_TRACE_ENABLED = process.env.VIRUAGENT_IMAGE_TRACE === '1';
+
+const imageTrace = (message, data) => {
+  if (!IMAGE_TRACE_ENABLED) {
+    return;
+  }
+  if (data === undefined) {
+    console.log(`[이미지 추적] ${message}`);
+    return;
+  }
+  console.log(`[이미지 추적] ${message}`, data);
+};
 
 const LOGIN_OTP_SELECTORS = [
     'input[name*="otp"]',
@@ -498,19 +510,6 @@ const sanitizeImageQueryForProvider = (value = '') => {
     .trim();
 };
 
-const buildUnsplashImageCandidates = (keyword = '') => {
-  const safeKeyword = sanitizeImageQueryForProvider(keyword);
-  if (!safeKeyword) {
-    return [];
-  }
-  const encoded = encodeURIComponent(safeKeyword.replace(/\s+/g, ','));
-  return [
-    `https://source.unsplash.com/1200x800/?${encoded}`,
-    `https://source.unsplash.com/1600x900/?${encoded}`,
-    `https://source.unsplash.com/featured/?${encoded}`,
-  ];
-};
-
 const buildLoremFlickrImageCandidates = (keyword = '') => {
   const safeKeyword = sanitizeImageQueryForProvider(keyword);
   if (!safeKeyword) {
@@ -550,6 +549,7 @@ const buildWikimediaImageCandidates = async (keyword = '') => {
   try {
     const query = encodeURIComponent(`${safeKeyword} file`);
     const apiUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${query}&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url&iiurlwidth=1200&format=json&origin=*`;
+    imageTrace('wikimedia.request', { keyword: safeKeyword, apiUrl });
     const raw = await fetchText(apiUrl);
     const parsed = JSON.parse(raw || '{}');
     const pages = parsed?.query?.pages || {};
@@ -566,8 +566,10 @@ const buildWikimediaImageCandidates = async (keyword = '') => {
         candidates.push(first.url);
       }
     }
+    imageTrace('wikimedia.response', { keyword: safeKeyword, count: candidates.length });
     return candidates;
   } catch {
+    imageTrace('wikimedia.error', { keyword: safeKeyword });
     return [];
   }
 };
@@ -761,6 +763,7 @@ const fetchText = async (url, retryCount = 0) => {
   const timeout = setTimeout(() => controller.abort(), 20000);
 
   try {
+    imageTrace('fetchText', { url, retryCount });
     const response = await fetch(url, {
       method: 'GET',
       redirect: 'follow',
@@ -777,6 +780,35 @@ const fetchText = async (url, retryCount = 0) => {
     if (retryCount < 1) {
       await sleep(700);
       return fetchText(url, retryCount + 1);
+    }
+    throw new Error(`웹 텍스트 다운로드 실패: ${error.message}`);
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const fetchTextWithHeaders = async (url, headers = {}, retryCount = 0) => {
+  const merged = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    ...headers,
+  };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      headers: merged,
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`텍스트 요청 실패: ${response.status} ${response.statusText}, url=${url}`);
+    }
+    return response.text();
+  } catch (error) {
+    if (retryCount < 1) {
+      await sleep(700);
+      return fetchTextWithHeaders(url, headers, retryCount + 1);
     }
     throw new Error(`웹 텍스트 다운로드 실패: ${error.message}`);
   } finally {
@@ -946,14 +978,61 @@ const fetchDuckDuckGoImageResults = async (query = '') => {
   try {
     const safeKeyword = String(query || '').trim();
     if (!safeKeyword) return [];
-    const searchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(safeKeyword)}&iax=images&ia=images`;
-    const searchText = await fetchText(searchUrl);
+    const searchUrl = `https://duckduckgo.com/?ia=images&origin=funnel_home_google&t=h_&q=${encodeURIComponent(safeKeyword)}&chip-select=search&iax=images`;
+    imageTrace('duckduckgo.searchPage', { query: safeKeyword, searchUrl });
+    const searchText = await fetchTextWithHeaders(searchUrl, {
+      Accept: 'text/html,application/xhtml+xml',
+      Referer: 'https://duckduckgo.com/',
+    });
     const vqd = extractDuckDuckGoVqd(searchText);
     if (!vqd) return [];
 
-    const apiUrl = `https://duckduckgo.com/i.js?l=wt-wt&o=json&q=${encodeURIComponent(safeKeyword)}&vqd=${encodeURIComponent(vqd)}&ia=images&iax=images`;
-    const apiText = await fetchText(apiUrl);
-    const parsed = JSON.parse(apiText || '{}');
+    const apiCandidates = [
+      `https://duckduckgo.com/i.js?l=wt-wt&o=json&q=${encodeURIComponent(safeKeyword)}&vqd=${encodeURIComponent(vqd)}&ia=images&iax=images`,
+      `https://duckduckgo.com/i.js?l=wt-wt&o=json&q=${encodeURIComponent(safeKeyword)}&ia=images&iax=images&vqd=${encodeURIComponent(vqd)}&s=0`,
+      `https://duckduckgo.com/i.js?o=json&q=${encodeURIComponent(safeKeyword)}&ia=images&iax=images&vqd=${encodeURIComponent(vqd)}&p=1`,
+      `https://duckduckgo.com/i.js?l=en-gb&o=json&q=${encodeURIComponent(safeKeyword)}&ia=images&iax=images&vqd=${encodeURIComponent(vqd)}`,
+    ];
+
+    const jsonHeaders = {
+      Accept: 'application/json, text/javascript, */*; q=0.01',
+      'Referer': `https://duckduckgo.com/?q=${encodeURIComponent(safeKeyword)}&ia=images&iax=images`,
+      'Origin': 'https://duckduckgo.com',
+    };
+
+    let parsed = null;
+    let apiUrl = null;
+    for (const candidate of apiCandidates) {
+      try {
+        imageTrace('duckduckgo.apiUrl', { query: safeKeyword, apiUrl: candidate });
+        const apiText = await fetchTextWithHeaders(candidate, jsonHeaders);
+        const safeText = String(apiText || '').trim();
+        if (!safeText) {
+          continue;
+        }
+        if (!safeText.startsWith('{') && !safeText.startsWith('[')) {
+          imageTrace('duckduckgo.apiParseSkipped', { query: safeKeyword, apiUrl: candidate, reason: 'nonJsonStart' });
+          continue;
+        }
+        parsed = JSON.parse(safeText);
+        if (Array.isArray(parsed.results) && parsed.results.length > 0) {
+          apiUrl = candidate;
+          break;
+        }
+      } catch {
+        imageTrace('duckduckgo.apiParseError', { query: safeKeyword, apiUrl: candidate });
+      }
+    }
+
+    if (!parsed) return [];
+    if (apiUrl) {
+      imageTrace('duckduckgo.apiUsed', { query: safeKeyword, apiUrl });
+    }
+
+    imageTrace('duckduckgo.apiResult', {
+      query: safeKeyword,
+      resultCount: Array.isArray(parsed?.results) ? parsed.results.length : 0,
+    });
     const results = Array.isArray(parsed.results) ? parsed.results : [];
 
     const images = [];
@@ -991,6 +1070,7 @@ const buildKeywordImageCandidates = async (keyword = '') => {
   if (!safeKeyword) {
     return [];
   }
+  imageTrace('buildKeywordImageCandidates.start', { safeKeyword });
 
   const duckduckgoQueries = [
     safeKeyword,
@@ -1012,7 +1092,9 @@ const buildKeywordImageCandidates = async (keyword = '') => {
     if (searchCandidates.length >= 6) {
       break;
     }
+    imageTrace('buildKeywordImageCandidates.ddgQuery', { query, currentCount: searchCandidates.length });
     const duckImages = await fetchDuckDuckGoImageResults(query);
+    imageTrace('buildKeywordImageCandidates.ddgResult', { query, count: duckImages.length });
     for (const duckImage of duckImages.slice(0, 6)) {
       if (searchCandidates.length >= 6) break;
       collectIfImage(duckImage);
@@ -1030,33 +1112,31 @@ const buildKeywordImageCandidates = async (keyword = '') => {
     if (searchCandidates.length >= 6) {
       break;
     }
-    for (const candidate of buildUnsplashImageCandidates(query)) {
+    imageTrace('buildKeywordImageCandidates.fallbackQuery', { query, currentCount: searchCandidates.length });
+    const wikiImages = await buildWikimediaImageCandidates(query);
+    imageTrace('buildKeywordImageCandidates.wikimediaResult', { query, count: wikiImages.length });
+    for (const candidate of wikiImages) {
       if (searchCandidates.length >= 6) {
         break;
       }
       collectIfImage(candidate);
     }
     for (const candidate of buildLoremFlickrImageCandidates(query)) {
+      imageTrace('buildKeywordImageCandidates.loremflickrCandidate', { query, candidate });
       if (searchCandidates.length >= 6) {
         break;
       }
       collectIfImage(candidate);
     }
     for (const candidate of buildPicsumImageCandidates(query)) {
+      imageTrace('buildKeywordImageCandidates.picsumCandidate', { query, candidate });
       if (searchCandidates.length >= 6) {
         break;
       }
       collectIfImage(candidate);
     }
     for (const candidate of buildPlaceholderImageCandidates()) {
-      if (searchCandidates.length >= 6) {
-        break;
-      }
-      collectIfImage(candidate);
-    }
-
-    const wikiImages = await buildWikimediaImageCandidates(query);
-    for (const candidate of wikiImages) {
+      imageTrace('buildKeywordImageCandidates.placeholderCandidate', { candidate });
       if (searchCandidates.length >= 6) {
         break;
       }
@@ -1322,6 +1402,20 @@ const replaceImagePlaceholdersWithUploaded = async (
 
     for (let sourceIndex = 0; sourceIndex < uniqueSources.length; sourceIndex += 1) {
       const sourceUrl = uniqueSources[sourceIndex];
+      if (IMAGE_TRACE_ENABLED) {
+        imageTrace('uploadAttempt', {
+          index: i,
+          sourceIndex,
+          sourceUrl,
+          host: (() => {
+            try {
+              return new URL(sourceUrl).hostname;
+            } catch {
+              return 'invalid-url';
+            }
+          })(),
+        });
+      }
       try {
         uploadedImage = await uploadImageFromRemote(api, sourceUrl, target.keyword);
         success = true;
@@ -1342,6 +1436,20 @@ const replaceImagePlaceholdersWithUploaded = async (
         const sourceUrl = fallbackSources[sourceIndex];
         if (uniqueSources.includes(sourceUrl)) {
           continue;
+        }
+        if (IMAGE_TRACE_ENABLED) {
+          imageTrace('uploadAttempt.fallback', {
+            index: i,
+            sourceIndex,
+            sourceUrl,
+            host: (() => {
+              try {
+                return new URL(sourceUrl).hostname;
+              } catch {
+                return 'invalid-url';
+              }
+            })(),
+          });
         }
         try {
           uploadedImage = await uploadImageFromRemote(api, sourceUrl, target.keyword);
@@ -1949,6 +2057,22 @@ const askForAuthentication = async ({
           if (categories.length === 1) {
             payload = { ...payload, category: categories[0].id };
           } else {
+            if (!process.stdin || !process.stdin.isTTY) {
+              const sampleCategory = categories.slice(0, 5).map((item) => `${item.id}: ${item.name}`).join(', ');
+              const sampleText = sampleCategory.length > 0 ? ` 예: ${sampleCategory}` : '';
+              return {
+                provider: 'tistory',
+                mode: 'publish',
+                status: 'need_category',
+                loggedIn: true,
+                title,
+                visibility,
+                tags: tag,
+                message: `카테고리가 지정되지 않았습니다. 비대화형 환경에서는 --category 옵션이 필수입니다. 사용법: --category <카테고리ID>.${sampleText}`,
+                categories,
+              };
+            }
+
             const selectedCategoryId = await promptCategorySelection(categories);
             if (!selectedCategoryId) {
               return {
