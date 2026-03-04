@@ -1,0 +1,19 @@
+{
+  "name": "viruagent-cli",
+  "version": "0.1.0",
+  "description": "viruagent 독립 실행형 CLI (MCP 없이 동작)",
+  "private": false,
+  "type": "commonjs",
+  "bin": {
+    "viruagent-cli": "bin/index.js"
+  },
+  "scripts": {
+    "start": "node bin/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "playwright": "^1.58.2"
+  }
+}
