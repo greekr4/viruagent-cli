@@ -1,4 +1,6 @@
-![virugif-ezgif com-video-to-gif-converter (1)](https://github.com/user-attachments/assets/09e53683-b1cb-40a7-840e-9a3f9334770d)# viruagent-cli
+
+![viru_run2](https://github.com/user-attachments/assets/76be6d06-3f0d-44e5-8152-d64b2fc68894)
+
 
 **AI 에이전트가 블로그를 쓰고, 태그를 만들고, 발행까지 자동으로 처리하는 CLI 도구**
 
@@ -24,7 +26,8 @@
 
 ## 설치
 
-![viru_setup](https://github.com/user-attachments/assets/2129ddc5-bef3-4849-9b56-da429bba6b9c)
+![viru_install](https://github.com/user-attachments/assets/35efb57f-fada-44c0-8dd4-6d586ef33a7c)
+
 
 
 아래 내용을 AI 에이전트에게 그대로 복사해서 보여주세요.
