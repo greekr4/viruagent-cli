@@ -61,15 +61,18 @@ When the user asks to write a blog post:
 Every post must follow this structure. Write in the same language as the user's request.
 
 ```html
-<!-- 1. Hook (1~2 sentences: question, surprising fact, or relatable problem) -->
-<p><strong>[Hook that grabs attention]</strong></p>
+<!-- 1. Hook (blockquote style2 for topic quote) -->
+<blockquote data-ke-style="style2">[One impactful sentence about the topic]</blockquote>
+<p data-ke-size="size16">&nbsp;</p>
 
 <!-- 2. Introduction (what this post covers, what the reader will learn) -->
 <p>[Brief overview — set expectations clearly]</p>
+<p data-ke-size="size16">&nbsp;</p>
 
 <!-- 3. Body (2~4 sections with h2/h3, short paragraphs, lists) -->
+<!-- Use <p data-ke-size="size16">&nbsp;</p> between sections for spacing -->
 <h2>[Section 1 Title — keyword-rich]</h2>
-<p>[Short paragraph, max 3~4 sentences]</p>
+<p>[Short paragraph, max 2~3 sentences]</p>
 <ul>
   <li>[Key point]</li>
   <li>[Key point]</li>
@@ -77,10 +80,6 @@ Every post must follow this structure. Write in the same language as the user's 
 
 <h2>[Section 2 Title]</h2>
 <p>[Short paragraph]</p>
-
-<!-- Use h3 for subsections when needed -->
-<h3>[Subsection]</h3>
-<p>[Details]</p>
 
 <!-- 4. Summary / Key Takeaways -->
 <h2>핵심 정리</h2>
@@ -97,11 +96,13 @@ Every post must follow this structure. Write in the same language as the user's 
 ### Writing Rules
 
 - **Title**: Include the primary keyword. 10~20 characters. Short and impactful.
-- **Paragraphs**: Max 3~4 sentences each. Break long ideas into multiple paragraphs.
+- **Paragraphs**: Max 2~3 sentences each. Break long ideas into multiple paragraphs for readability.
+- **Spacing**: Use `<p data-ke-size="size16">&nbsp;</p>` between sections for line breaks (Tistory-specific).
+- **Hook**: Always use `<blockquote data-ke-style="style2">` for the opening topic quote.
 - **Lists**: Use `<ul>` or `<ol>` for 3+ items. Easier to scan.
-- **Subheadings**: Use `<h2>` for main sections, `<h3>` for subsections. Include keywords naturally.
+- **Subheadings**: Use `<h2>` for ALL section titles. Do NOT use `<h3>`. Keep heading sizes consistent.
 - **Tone**: Conversational but informative. Avoid jargon unless the audience expects it.
-- **Length**: 800~1500 words for standard posts. Aim for depth over fluff.
+- **Length**: 1500~2000 characters (한글 기준) for standard posts. Do NOT exceed 2000 characters.
 - **SEO**: Primary keyword in title, first paragraph, and at least one `<h2>`. Don't keyword-stuff.
 
 ```bash
@@ -112,6 +113,9 @@ npx viruagent-cli publish \
   --category <id> \
   --tags "tag1,tag2,tag3,tag4,tag5" \
   --visibility public \
+  --related-image-keywords "keyword1,keyword2" \
+  --image-upload-limit 2 \
+  --minimum-image-count 1 \
   --dry-run
 ```
 
@@ -124,10 +128,20 @@ npx viruagent-cli publish \
   --content "<h2>...</h2><p>...</p>" \
   --category <id> \
   --tags "tag1,tag2,tag3,tag4,tag5" \
-  --visibility public
+  --visibility public \
+  --related-image-keywords "keyword1,keyword2" \
+  --image-upload-limit 2 \
+  --minimum-image-count 1
 ```
 
 For drafts, use `save-draft` instead of `publish`.
+
+### Image Rules (MUST FOLLOW)
+
+- **Always** include `--related-image-keywords` with 2~3 keywords relevant to the post topic
+- **Always** set `--image-upload-limit 2` and `--minimum-image-count 1`
+- Keywords should be in English for better image search results
+- Never use `--no-auto-upload-images` unless the user explicitly asks
 
 ## Step 6: Verify
 
