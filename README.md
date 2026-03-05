@@ -26,41 +26,36 @@
 
 아래 내용을 AI 에이전트에게 그대로 복사해서 보여주세요.
 
-> You are installing viruagent-cli, a blog publishing CLI tool. Follow these steps in order.
->
-> **Step 1: Install skill**
->
-> ```bash
-> npx viruagent-cli install-skill
-> ```
->
-> This copies the skill file to `~/.claude/commands/viruagent.md`. Confirm the file exists before proceeding.
->
-> **Step 2: Verify CLI**
->
-> ```bash
-> npx viruagent-cli --spec
-> ```
->
-> If the output contains `"ok": true`, the CLI is ready. If it fails, check that Node.js >= 18 is installed.
->
-> **Step 3: Login**
->
-> ```bash
-> npx viruagent-cli status --provider tistory
-> ```
->
-> If `loggedIn` is `false`, ask the user for their Tistory email and password, then run:
->
-> ```bash
-> npx viruagent-cli login --provider tistory --username "<email>" --password "<password>" --headless
-> ```
->
-> If the response contains `pending_2fa`, tell the user to approve the login on their mobile Kakao app, then re-run the status command to confirm.
->
-> Tell the user installation is complete. They can now say "블로그 써줘" to start writing.
+```
+You are installing viruagent-cli, a blog publishing CLI tool. Follow these steps in order.
 
-설치 후 사용법, 커스터마이징 등은 에이전트에게 물어보면 알아서 안내합니다.
+Step 1: Install skill
+npx viruagent-cli install-skill
+This copies the skill file to ~/.claude/commands/viruagent.md. Confirm the file exists before proceeding.
+
+Step 2: Verify CLI
+npx viruagent-cli --spec
+If the output contains "ok": true, the CLI is ready. If it fails, check that Node.js >= 18 is installed.
+
+Step 3: Login
+npx viruagent-cli status --provider tistory
+If loggedIn is false, ask the user for their Tistory email and password, then run:
+npx viruagent-cli login --provider tistory --username "<email>" --password "<password>" --headless
+If the response contains pending_2fa, tell the user to approve the login on their mobile Kakao app, then re-run the status command to confirm.
+
+Tell the user installation is complete. They can now say "블로그 써줘" to start writing.
+```
+
+## 사용법
+
+| 이렇게 말하면 | 에이전트가 알아서 |
+|---|---|
+| "블로그 써줘" | 로그인 → 카테고리 → 글 작성 → 태그 → 발행 |
+| "임시저장해줘" | 같은 흐름, 발행 대신 임시저장 |
+| "최근 글 보여줘" | 최근 발행 글 목록 조회 |
+| "카테고리 뭐 있어?" | 카테고리 목록 조회 |
+
+자세한 사용법이나 커스터마이징은 에이전트에게 물어보면 안내해줍니다.
 
 ## 지원 환경
 
