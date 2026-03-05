@@ -1,12 +1,37 @@
 {
   "name": "viruagent-cli",
-  "version": "0.1.0",
-  "description": "viruagent 독립 실행형 CLI (MCP 없이 동작)",
+  "version": "0.2.0",
+  "description": "AI-agent-optimized CLI for blog publishing (Tistory, Naver)",
   "private": false,
   "type": "commonjs",
+  "license": "MIT",
+  "keywords": [
+    "ai-agent",
+    "cli",
+    "blog",
+    "tistory",
+    "naver",
+    "publishing",
+    "automation",
+    "llm",
+    "ai-tools"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tk-viruagent/viruagent-cli.git"
+  },
+  "homepage": "https://github.com/tk-viruagent/viruagent-cli#readme",
   "bin": {
     "viruagent-cli": "bin/index.js"
   },
+  "files": [
+    "bin/",
+    "src/",
+    "skills/",
+    "AGENTS.md",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "start": "node bin/index.js"
   },
@@ -14,6 +39,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "commander": "^14.0.3",
     "playwright": "^1.58.2"
   }
 }

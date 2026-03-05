@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const os = require('os');
+
 const { createProviderManager } = require('./services/providerManager');
 
 const parseList = (value) =>
@@ -9,144 +11,165 @@ const parseList = (value) =>
     .map((item) => item.trim())
     .filter(Boolean);
 
-const parseBool = (flags, key, fallback = false) => {
-  if (!Object.prototype.hasOwnProperty.call(flags, key)) {
-    return fallback;
-  }
-  const value = flags[key];
-  if (typeof value === 'boolean') {
-    return value;
-  }
-  const normalized = String(value || '').toLowerCase();
-  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
-};
-
 const parseIntOrNull = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
 };
 
-const readContent = (flags) => {
-  if (flags.contentFile) {
-    const fullPath = path.resolve(process.cwd(), String(flags.contentFile));
+const readContent = (opts) => {
+  if (opts.contentFile) {
+    const fullPath = path.resolve(process.cwd(), String(opts.contentFile));
+    if (!fs.existsSync(fullPath)) {
+      const err = new Error(`File not found: ${opts.contentFile}`);
+      err.code = 'FILE_NOT_FOUND';
+      throw err;
+    }
     return fs.readFileSync(fullPath, 'utf-8');
   }
-  return String(flags.content || '');
+  return String(opts.content || '');
 };
 
-const pickProvider = (flags) => {
-  const rawProvider = flags.provider || 'tistory';
-  return String(rawProvider || 'tistory');
+const createError = (code, message, hint) => {
+  const err = new Error(message);
+  err.code = code;
+  if (hint) err.hint = hint;
+  return err;
 };
 
-const runCommand = async (command, flags, positionals) => {
+// Write commands that support --dry-run
+const WRITE_COMMANDS = new Set(['publish', 'save-draft', 'login', 'logout']);
+
+const runCommand = async (command, opts = {}) => {
+  // --dry-run support for write commands
+  if (opts.dryRun && WRITE_COMMANDS.has(command)) {
+    return { dryRun: true, command, params: { ...opts, dryRun: undefined } };
+  }
+
+  if (command === 'install-skill') {
+    const skillSrc = path.resolve(__dirname, '..', 'skills', 'viruagent.md');
+    if (!fs.existsSync(skillSrc)) {
+      throw createError('FILE_NOT_FOUND', 'Skill file not found in package');
+    }
+
+    // Detect target: Claude Code (~/.claude/commands/) or custom
+    const targetDir = opts.target
+      || path.join(os.homedir(), '.claude', 'commands');
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    const dest = path.join(targetDir, 'viruagent.md');
+    fs.copyFileSync(skillSrc, dest);
+    return { installed: true, path: dest };
+  }
+
   const manager = createProviderManager();
 
   if (command === 'list-providers') {
-    return {
-      providers: manager.getAvailableProviders(),
-    };
+    return { providers: manager.getAvailableProviders() };
   }
 
-  const provider = manager.getProvider(pickProvider(flags));
-  const providerName = flags.provider || 'tistory';
+  const providerName = opts.provider || 'tistory';
+  let provider;
+  try {
+    provider = manager.getProvider(providerName);
+  } catch {
+    throw createError(
+      'PROVIDER_NOT_FOUND',
+      `Unknown provider: ${providerName}`,
+      'viruagent-cli list-providers'
+    );
+  }
 
-  const withProvider = (fn) => async (payload = {}) => {
-    const result = await fn(payload);
-    return {
-      provider: providerName,
-      ...result,
-    };
+  const withProvider = (fn) => async () => {
+    const result = await fn();
+    return { provider: providerName, ...result };
   };
 
   switch (command) {
     case 'status':
     case 'auth-status':
       return withProvider(() => provider.authStatus())();
-    case 'login': {
-      const result = await withProvider(() =>
+
+    case 'login':
+      return withProvider(() =>
         provider.login({
-          headless: parseBool(flags, 'headless', false),
-          manual: parseBool(flags, 'manual', false),
-          username: flags.username || undefined,
-          password: flags.password || undefined,
-          twoFactorCode: flags.twoFactorCode || undefined,
+          headless: Boolean(opts.headless),
+          manual: Boolean(opts.manual),
+          username: opts.username || undefined,
+          password: opts.password || undefined,
+          twoFactorCode: opts.twoFactorCode || undefined,
         })
       )();
-      return result;
-    }
+
     case 'publish': {
-      const content = readContent(flags);
+      const content = readContent(opts);
       if (!content) {
-        throw new Error('publish는 --content 또는 --content-file가 필요합니다.');
+        throw createError('MISSING_CONTENT', 'publish requires --content or --content-file', 'viruagent-cli publish --spec');
       }
       return withProvider(() =>
         provider.publish({
-          title: flags.title || '',
+          title: opts.title || '',
           content,
-          visibility: flags.visibility || 'public',
-          category: parseIntOrNull(flags.category),
-          tags: flags.tags || '',
-          thumbnail: flags.thumbnail || undefined,
-          relatedImageKeywords: parseList(flags.relatedImageKeywords),
-          enforceSystemPrompt: parseBool(flags, 'enforceSystemPrompt', true),
-          imageUrls: parseList(flags.imageUrls),
-          imageUploadLimit: parseIntOrNull(flags.imageUploadLimit) || 1,
-          minimumImageCount: parseIntOrNull(flags.minimumImageCount) || 1,
-          autoUploadImages: parseBool(flags, 'autoUploadImages', true),
+          visibility: opts.visibility || 'public',
+          category: parseIntOrNull(opts.category),
+          tags: opts.tags || '',
+          thumbnail: opts.thumbnail || undefined,
+          relatedImageKeywords: parseList(opts.relatedImageKeywords),
+          enforceSystemPrompt: opts.enforceSystemPrompt !== false,
+          imageUrls: parseList(opts.imageUrls),
+          imageUploadLimit: parseIntOrNull(opts.imageUploadLimit) || 1,
+          minimumImageCount: parseIntOrNull(opts.minimumImageCount) || 1,
+          autoUploadImages: opts.autoUploadImages !== false,
         })
       )();
     }
+
     case 'save-draft': {
-      const content = readContent(flags);
+      const content = readContent(opts);
       if (!content) {
-        throw new Error('save-draft는 --content 또는 --content-file가 필요합니다.');
+        throw createError('MISSING_CONTENT', 'save-draft requires --content or --content-file', 'viruagent-cli save-draft --spec');
       }
       return withProvider(() =>
         provider.saveDraft({
-          title: flags.title || '',
+          title: opts.title || '',
           content,
-          relatedImageKeywords: parseList(flags.relatedImageKeywords),
-          enforceSystemPrompt: parseBool(flags, 'enforceSystemPrompt', true),
-          imageUrls: parseList(flags.imageUrls),
-          imageUploadLimit: parseIntOrNull(flags.imageUploadLimit) || 1,
-          minimumImageCount: parseIntOrNull(flags.minimumImageCount) || 1,
-          autoUploadImages: parseBool(flags, 'autoUploadImages', true),
-          tags: flags.tags || '',
-          category: parseIntOrNull(flags.category),
+          relatedImageKeywords: parseList(opts.relatedImageKeywords),
+          enforceSystemPrompt: opts.enforceSystemPrompt !== false,
+          imageUrls: parseList(opts.imageUrls),
+          imageUploadLimit: parseIntOrNull(opts.imageUploadLimit) || 1,
+          minimumImageCount: parseIntOrNull(opts.minimumImageCount) || 1,
+          autoUploadImages: opts.autoUploadImages !== false,
+          tags: opts.tags || '',
+          category: parseIntOrNull(opts.category),
         })
       )();
     }
+
     case 'list-categories':
       return withProvider(() => provider.listCategories())();
+
     case 'list-posts':
-      return withProvider(() => provider.listPosts({
-        limit: parseIntOrNull(flags.limit) || 20,
-      }))();
-    case 'read-post':
-      if (!flags.postId && positionals[0]) {
-        flags.postId = positionals[0];
+      return withProvider(() =>
+        provider.listPosts({ limit: parseIntOrNull(opts.limit) || 20 })
+      )();
+
+    case 'read-post': {
+      if (!opts.postId) {
+        throw createError('INVALID_POST_ID', 'read-post requires --post-id', 'viruagent-cli read-post --spec');
       }
-      if (!flags.postId) {
-        throw new Error('read-post는 --post-id 또는 두 번째 인자가 필요합니다.');
-      }
-      return withProvider(() => provider.getPost({
-        postId: flags.postId,
-        includeDraft: parseBool(flags, 'includeDraft', false),
-      }))();
+      return withProvider(() =>
+        provider.getPost({
+          postId: opts.postId,
+          includeDraft: Boolean(opts.includeDraft),
+        })
+      )();
+    }
+
     case 'logout':
       return withProvider(() => provider.logout())();
+
     default:
-      throw new Error(`알 수 없는 명령: ${command}`);
+      throw createError('UNKNOWN_COMMAND', `Unknown command: ${command}`, 'viruagent-cli --spec');
   }
 };
 
-const run = async (command, flags, positionals, print) => {
-  const commandName = command || 'status';
-  const result = await runCommand(commandName, flags, positionals);
-  print(JSON.stringify(result, null, 2));
-};
-
-module.exports = {
-  run,
-};
+module.exports = { runCommand };
