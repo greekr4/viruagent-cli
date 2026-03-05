@@ -18,9 +18,9 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tk-viruagent/viruagent-cli.git"
+    "url": "git+https://github.com/greekr4/viruagent-cli.git"
   },
-  "homepage": "https://github.com/tk-viruagent/viruagent-cli#readme",
+  "homepage": "https://github.com/greekr4/viruagent-cli#readme",
   "bin": {
     "viruagent-cli": "bin/index.js"
   },
