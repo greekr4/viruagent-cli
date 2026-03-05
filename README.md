@@ -1,4 +1,4 @@
-# viruagent-cli
+![virugif-ezgif com-video-to-gif-converter (1)](https://github.com/user-attachments/assets/09e53683-b1cb-40a7-840e-9a3f9334770d)# viruagent-cli
 
 **AI 에이전트가 블로그를 쓰고, 태그를 만들고, 발행까지 자동으로 처리하는 CLI 도구**
 
@@ -23,6 +23,9 @@
 - **커스텀**: 스킬 파일을 직접 수정하여 원하는 대로 동작하도록 설정 가능
 
 ## 설치
+
+![viru_setup](https://github.com/user-attachments/assets/2129ddc5-bef3-4849-9b56-da429bba6b9c)
+
 
 아래 내용을 AI 에이전트에게 그대로 복사해서 보여주세요.
 
