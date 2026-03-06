@@ -49,6 +49,8 @@ loginCmd
   .option('--headless', 'Run browser in headless mode', false)
   .option('--manual', 'Use manual login mode', false)
   .option('--two-factor-code <code>', '2FA verification code')
+  .option('--from-chrome', 'Import session from Chrome browser', false)
+  .option('--profile <name>', 'Chrome profile name (default: Default)')
   .action((opts) => execute('login', opts));
 
 const publishCmd = program

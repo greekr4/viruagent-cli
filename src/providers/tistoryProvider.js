@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { execSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
@@ -1733,6 +1734,160 @@ const persistTistorySession = async (context, targetSessionPath) => {
   );
 };
 
+const decryptChromeCookie = (encryptedValue, derivedKey) => {
+  if (!encryptedValue || encryptedValue.length < 4) return '';
+  const prefix = encryptedValue.slice(0, 3).toString('ascii');
+  if (prefix !== 'v10') return encryptedValue.toString('utf-8');
+
+  const encrypted = encryptedValue.slice(3);
+  const iv = Buffer.alloc(16, 0x20);
+  const decipher = crypto.createDecipheriv('aes-128-cbc', derivedKey, iv);
+  decipher.setAutoPadding(true);
+  try {
+    const dec = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+    // CBC 첫 블록은 IV 불일치로 깨짐 → 끝에서부터 printable ASCII 범위 추출
+    let start = dec.length;
+    for (let i = dec.length - 1; i >= 0; i--) {
+      if (dec[i] >= 0x20 && dec[i] <= 0x7e) { start = i; }
+      else { break; }
+    }
+    return start < dec.length ? dec.slice(start).toString('utf-8') : '';
+  } catch {
+    return '';
+  }
+};
+
+const extractChromeCookies = (cookiesDb, derivedKey, domainPattern) => {
+  const tempDb = path.join(os.tmpdir(), `viruagent-cookies-${Date.now()}.db`);
+  try {
+    execSync(`sqlite3 "${cookiesDb}" ".backup '${tempDb}'"`, { timeout: 5000 });
+  } catch {
+    throw new Error('Chrome 쿠키 DB 복사에 실패했습니다. Chrome이 실행 중이면 잠시 후 다시 시도해 주세요.');
+  }
+
+  try {
+    const rows = execSync(
+      `sqlite3 -separator '||' "${tempDb}" "SELECT host_key, name, value, hex(encrypted_value), path, expires_utc, is_secure, is_httponly, samesite FROM cookies WHERE host_key LIKE '${domainPattern}'"`,
+      { encoding: 'utf-8', timeout: 5000 }
+    ).trim();
+    if (!rows) return [];
+
+    const chromeEpochOffset = 11644473600;
+    const sameSiteMap = { '-1': 'None', '0': 'None', '1': 'Lax', '2': 'Strict' };
+    return rows.split('\n').map(row => {
+      const [domain, name, plainValue, encHex, cookiePath, expiresUtc, isSecure, isHttpOnly, sameSite] = row.split('||');
+      let value = plainValue || '';
+      if (!value && encHex) {
+        value = decryptChromeCookie(Buffer.from(encHex, 'hex'), derivedKey);
+      }
+      if (value && !/^[\x20-\x7E]*$/.test(value)) value = '';
+      const expires = expiresUtc === '0' ? -1 : Math.floor(Number(expiresUtc) / 1000000) - chromeEpochOffset;
+      return { name, value, domain, path: cookiePath || '/', expires, httpOnly: isHttpOnly === '1', secure: isSecure === '1', sameSite: sameSiteMap[sameSite] || 'None' };
+    }).filter(c => c.value);
+  } finally {
+    try { fs.unlinkSync(tempDb); } catch {}
+  }
+};
+
+const importSessionFromChrome = async (targetSessionPath, profileName = 'Default') => {
+  const chromeRoot = path.join(os.homedir(), 'Library', 'Application Support', 'Google', 'Chrome');
+  if (!fs.existsSync(chromeRoot)) {
+    throw new Error('Chrome이 설치되어 있지 않습니다.');
+  }
+
+  const profileDir = path.join(chromeRoot, profileName);
+  const cookiesDb = path.join(profileDir, 'Cookies');
+  if (!fs.existsSync(cookiesDb)) {
+    throw new Error(`Chrome 프로필 "${profileName}"에 쿠키 DB가 없습니다.`);
+  }
+
+  // 1) Keychain에서 Chrome 암호화 키 추출
+  let keychainPassword;
+  try {
+    keychainPassword = execSync(
+      'security find-generic-password -s "Chrome Safe Storage" -w',
+      { encoding: 'utf-8', timeout: 5000 }
+    ).trim();
+  } catch {
+    throw new Error('Chrome Safe Storage 키를 Keychain에서 읽을 수 없습니다. macOS 권한을 확인해 주세요.');
+  }
+  const derivedKey = crypto.pbkdf2Sync(keychainPassword, 'saltysalt', 1003, 16, 'sha1');
+
+  // 2) Chrome에서 tistory + kakao 쿠키 복호화 추출
+  const tistoryCookies = extractChromeCookies(cookiesDb, derivedKey, '%tistory.com');
+  const kakaoCookies = extractChromeCookies(cookiesDb, derivedKey, '%kakao.com');
+
+  // 이미 TSSESSION 있으면 바로 저장
+  const existingSession = tistoryCookies.some(c => c.name === 'TSSESSION' && c.value);
+  if (existingSession) {
+    const payload = { cookies: tistoryCookies, updatedAt: new Date().toISOString() };
+    await fs.promises.mkdir(path.dirname(targetSessionPath), { recursive: true });
+    await fs.promises.writeFile(targetSessionPath, JSON.stringify(payload, null, 2), 'utf-8');
+    return { cookieCount: tistoryCookies.length };
+  }
+
+  // 3) 카카오 세션 쿠키가 있으면 Playwright에 주입 후 자동 로그인
+  const hasKakaoSession = kakaoCookies.some(c => c.domain.includes('kakao.com') && (c.name === '_kawlt' || c.name === '_kawltea' || c.name === '_karmt'));
+  if (!hasKakaoSession) {
+    throw new Error('Chrome에 카카오 로그인 세션이 없습니다. Chrome에서 먼저 카카오 계정에 로그인해 주세요.');
+  }
+
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext();
+  try {
+    // Playwright 형식으로 변환하여 쿠키 주입
+    const allCookies = [...tistoryCookies, ...kakaoCookies].map(c => ({
+      ...c,
+      domain: c.domain.startsWith('.') ? c.domain : c.domain,
+      expires: c.expires > 0 ? c.expires : undefined,
+    }));
+    await context.addCookies(allCookies);
+
+    const page = await context.newPage();
+    await page.goto('https://www.tistory.com/auth/login', { waitUntil: 'domcontentloaded', timeout: 10000 });
+    await page.waitForTimeout(1000);
+
+    // 카카오 로그인 버튼 클릭
+    const kakaoBtn = await pickValue(page, KAKAO_TRIGGER_SELECTORS);
+    if (kakaoBtn) {
+      await page.locator(kakaoBtn).click({ timeout: 5000 }).catch(() => {});
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
+    }
+
+    // 카카오 계정 확인 → 계속하기 클릭
+    await page.waitForTimeout(2000);
+    const confirmBtn = await pickValue(page, [
+      ...KAKAO_ACCOUNT_CONFIRM_SELECTORS.continue,
+      'button[type="submit"]',
+    ]);
+    if (confirmBtn) {
+      await page.locator(confirmBtn).click({ timeout: 3000 }).catch(() => {});
+    }
+
+    // TSSESSION 대기 (최대 15초)
+    let hasSession = false;
+    const maxWait = 15000;
+    const startTime = Date.now();
+    while (Date.now() - startTime < maxWait) {
+      await page.waitForTimeout(1000);
+      const cookies = await context.cookies('https://www.tistory.com');
+      hasSession = cookies.some(c => c.name === 'TSSESSION' && c.value);
+      if (hasSession) break;
+    }
+
+    if (!hasSession) {
+      throw new Error('Chrome 카카오 세션으로 티스토리 자동 로그인에 실패했습니다.');
+    }
+
+    await persistTistorySession(context, targetSessionPath);
+    const finalCookies = await context.cookies('https://www.tistory.com');
+    return { cookieCount: finalCookies.filter(c => String(c.domain).includes('tistory')).length };
+  } finally {
+    await context.close().catch(() => {});
+    await browser.close().catch(() => {});
+  }
+};
+
 const createTistoryProvider = ({ sessionPath }) => {
   const tistoryApi = createTistoryApiClient({ sessionPath });
 
@@ -1920,7 +2075,25 @@ const askForAuthentication = async ({
       username,
       password,
       twoFactorCode,
+      fromChrome,
+      profile,
     } = {}) {
+      if (fromChrome) {
+        await importSessionFromChrome(sessionPath, profile || 'Default');
+        tistoryApi.resetState();
+        const blogName = await tistoryApi.initBlog();
+        const result = {
+          provider: 'tistory',
+          loggedIn: true,
+          blogName,
+          blogUrl: `https://${blogName}.tistory.com`,
+          sessionPath,
+          source: 'chrome-import',
+        };
+        saveProviderMeta('tistory', { loggedIn: true, blogName, blogUrl: result.blogUrl, sessionPath });
+        return result;
+      }
+
       const creds = readCredentialsFromEnv();
       const resolved = {
         headless,
