@@ -62,47 +62,67 @@ Every post must follow this structure. Write in the same language as the user's 
 
 ```html
 <!-- 1. Hook (blockquote style2 for topic quote) -->
-<blockquote data-ke-style="style2">[One impactful sentence about the topic]</blockquote>
+<blockquote data-ke-style="style2">[One impactful sentence that captures the core insight or tension]</blockquote>
 <p data-ke-size="size16">&nbsp;</p>
 
-<!-- 2. Introduction (what this post covers, what the reader will learn) -->
-<p>[Brief overview — set expectations clearly]</p>
+<!-- 2. Introduction (2~3 paragraphs: context, reader empathy, what this post covers) -->
+<p data-ke-size="size18">[Describe the situation the reader relates to — paint a vivid picture, 3~5 sentences]</p>
+<p data-ke-size="size18">[Set expectations: what angle this post takes, what the reader will gain]</p>
 <p data-ke-size="size16">&nbsp;</p>
 
-<!-- 3. Body (2~4 sections with h2/h3, short paragraphs, lists) -->
+<!-- 3. Body (3~4 sections with h2, each section has 2~3 paragraphs) -->
 <!-- Use <p data-ke-size="size16">&nbsp;</p> between sections for spacing -->
 <h2>[Section 1 Title — keyword-rich]</h2>
-<p>[Short paragraph, max 2~3 sentences]</p>
+<p data-ke-size="size18">[Explain the concept or situation in 3~5 sentences. Include evidence: expert quotes, data, or real-world examples]</p>
+<p data-ke-size="size18">[Deepen the point with analysis, comparison, or implication. Connect to the reader's experience]</p>
 <ul>
+  <li>[Key point — only use lists for 3+ concrete items worth scanning]</li>
   <li>[Key point]</li>
   <li>[Key point]</li>
 </ul>
+<p data-ke-size="size16">&nbsp;</p>
 
 <h2>[Section 2 Title]</h2>
-<p>[Short paragraph]</p>
+<p data-ke-size="size18">[Introduce a new angle, case study, or supporting argument. 3~5 sentences with specific details]</p>
+<p data-ke-size="size18">[Analyze why this matters. Use <strong>bold</strong> for key terms. Connect back to the main thesis]</p>
+<p data-ke-size="size16">&nbsp;</p>
+
+<h2>[Section 3 Title]</h2>
+<p data-ke-size="size18">[Practical application or actionable insight. Show, don't just tell]</p>
+<p data-ke-size="size18">[Bridge to the conclusion — "what this all means"]</p>
+<p data-ke-size="size16">&nbsp;</p>
 
 <!-- 4. Summary / Key Takeaways -->
 <h2>핵심 정리</h2>
 <ul>
-  <li>[Takeaway 1]</li>
+  <li>[Takeaway 1 — one complete sentence, not a fragment]</li>
   <li>[Takeaway 2]</li>
   <li>[Takeaway 3]</li>
 </ul>
+<p data-ke-size="size16">&nbsp;</p>
 
-<!-- 5. Closing (CTA or next step) -->
-<p>[Closing sentence — encourage action, share, or further reading]</p>
+<!-- 5. Closing (specific action the reader can take) -->
+<p data-ke-size="size18">[Closing 1~2 sentences — suggest a concrete, immediate action. Not vague "stay tuned" but specific "try this tomorrow"]</p>
 ```
 
 ### Writing Rules
 
 - **Title**: Include the primary keyword. 10~20 characters. Short and impactful.
-- **Paragraphs**: Max 2~3 sentences each. Break long ideas into multiple paragraphs for readability.
+- **Length**: 3000~4000 characters (한글 기준). Aim for depth, not padding.
+- **Paragraphs**: 3~5 sentences each. Develop ideas fully within a paragraph before moving on. Do NOT write 1~2 sentence paragraphs repeatedly.
+- **Font size**: Use `<p data-ke-size="size18">` for all body text paragraphs. Use `<p data-ke-size="size16">&nbsp;</p>` only for spacing between sections.
 - **Spacing**: Use `<p data-ke-size="size16">&nbsp;</p>` between sections for line breaks (Tistory-specific).
 - **Hook**: Always use `<blockquote data-ke-style="style2">` for the opening topic quote.
-- **Lists**: Use `<ul>` or `<ol>` for 3+ items. Easier to scan.
+- **Introduction**: 2~3 paragraphs that set context and build reader empathy before diving into the body.
+- **Body sections**: Each h2 section must have 2~3 substantial paragraphs. Do NOT jump straight to bullet lists.
+- **Lists**: Use sparingly — only for 3+ concrete, scannable items. Default to paragraphs for explanation and analysis.
+- **Evidence**: Each body section should include at least one of: expert quote, data point, real company example, or research finding. Cite sources naturally within the text.
+- **Perspective shift**: Include at least one moment that reframes the reader's thinking (e.g., "X is not about A, it's about B").
+- **Transitions**: Connect sections with bridge sentences. Avoid abrupt jumps between topics.
+- **Bold**: Use `<strong>` for key terms and concepts (2~3 per section max).
 - **Subheadings**: Use `<h2>` for ALL section titles. Do NOT use `<h3>`. Keep heading sizes consistent.
-- **Tone**: Conversational but informative. Avoid jargon unless the audience expects it.
-- **Length**: 1500~2000 characters (한글 기준) for standard posts. Do NOT exceed 2000 characters.
+- **Tone**: Conversational but substantive. Write as if explaining to a smart colleague, not listing facts for a report.
+- **Closing**: End with a specific, actionable suggestion the reader can try immediately — not a vague "stay tuned."
 - **SEO**: Primary keyword in title, first paragraph, and at least one `<h2>`. Don't keyword-stuff.
 
 ```bash
