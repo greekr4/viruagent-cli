@@ -1,36 +1,38 @@
 
 ![viru_run2](https://github.com/user-attachments/assets/76be6d06-3f0d-44e5-8152-d64b2fc68894)
 
+<p align="center">
+  <a href="README.ko.md"><img src="https://img.shields.io/badge/한국어-red?style=for-the-badge" alt="Korean"></a>
+  <a href="README.md"><img src="https://img.shields.io/badge/English-blue?style=for-the-badge" alt="English"></a>
+</p>
 
-**AI 에이전트가 블로그를 쓰고, 태그를 만들고, 발행까지 자동으로 처리하는 CLI 도구**
+**A CLI tool where AI agents write, tag, and publish blog posts automatically.**
 
-사람이 아닌 **AI 에이전트를 위해** 설계되었습니다.
+Designed not for humans, but for **AI agents**.
 
-## 동작 방식
+## How It Works
 
-**CLI + 스킬 기반**으로 작동합니다. CLI 자체는 인터페이스만 담당하고, CLI 호출 흐름, 글 양식 등 스킬 파일(`viruagent.md`)이 AI 에이전트에게 지시합니다.
+Operates via **CLI + skill files**. The CLI handles the interface; the skill file (`viruagent.md`) instructs the AI agent on workflow, formatting, and rules.
 
 ```
-사용자: "블로그 써줘"
-  → 스킬이 에이전트에게 워크플로우 지시
-    → 에이전트가 CLI를 호출 (로그인, 카테고리 조회, 발행 등)
+User: "Write a blog post"
+  → Skill instructs the agent on workflow
+    → Agent calls CLI (login, list categories, publish, etc.)
 
-사용자: /viruagent "글 써줘"
-  → 스킬 직접 호출
+User: /viruagent "Write a post"
+  → Direct skill invocation
 ```
 
-- **스킬 파일**: 에이전트가 무엇을, 어떤 순서로 할지 정의 (글 구조, 태그 규칙, 이미지 설정 등)
-- **CLI**: 스킬의 지시를 받아 실제 작업 수행 (로그인, API 호출, 브라우저 자동화)
-- **에이전트**: 스킬을 읽고 CLI를 조합하여 자율적으로 실행
-- **커스텀**: 스킬 파일을 직접 수정하여 원하는 대로 동작하도록 설정 가능
+- **Skill file**: Defines what to do and in what order (post structure, tag rules, image settings)
+- **CLI**: Executes tasks per skill instructions (login, API calls, browser automation)
+- **Agent**: Reads the skill and orchestrates CLI commands autonomously
+- **Custom**: Edit the skill file to customize behavior
 
-## 설치
+## Installation
 
 ![viru_install](https://github.com/user-attachments/assets/35efb57f-fada-44c0-8dd4-6d586ef33a7c)
 
-
-
-아래 내용을 AI 에이전트에게 그대로 복사해서 보여주세요.
+Copy the following to your AI agent:
 
 ```
 You are installing viruagent-cli, a blog publishing CLI tool. Follow these steps in order.
@@ -48,74 +50,72 @@ exists before proceeding.
 Tell the user that viruagent-cli installation is complete.
 ```
 
-## 사용법
+## Login
 
-| 이렇게 말하면 | 에이전트가 알아서 |
+```bash
+# Import session from Chrome (no ID/PW needed, macOS only)
+npx viruagent-cli login --from-chrome
+
+# Use a specific Chrome profile
+npx viruagent-cli login --from-chrome --profile "Profile 2"
+
+# Traditional Kakao login (ID/PW required)
+npx viruagent-cli login --username <id> --password <pw> --headless
+```
+
+`--from-chrome` decrypts Chrome's cookie database directly via macOS Keychain. No browser launch, no 2FA — completes in under 1 second.
+
+## Usage
+
+| Say this | Agent handles |
 |---|---|
-| "블로그 써줘" | 로그인 → 카테고리 → 글 작성 → 태그 → 발행 |
-| "임시저장해줘" | 같은 흐름, 발행 대신 임시저장 |
-| "최근 글 보여줘" | 최근 발행 글 목록 조회 |
-| "카테고리 뭐 있어?" | 카테고리 목록 조회 |
+| "Write a blog post" | Login → Categories → Draft → Tags → Publish |
+| "Save as draft" | Same flow, saves as draft instead |
+| "Show recent posts" | Lists recent published posts |
+| "What categories?" | Lists available categories |
 
-자세한 사용법이나 커스터마이징은 에이전트에게 물어보면 안내해줍니다.
+Ask the agent for detailed usage or customization help.
 
-## 지원 환경
+## Supported Environments
 
-| 항목                              | 상태  |
-| --------------------------------- | ----- |
-| Claude Code,Codex,Cursor 등       | 지원  |
-| bash 실행 가능한 모든 AI 에이전트 | 지원  |
-| Node.js                           | >= 18 |
+| Item | Status |
+| --- | --- |
+| Claude Code, Codex, Cursor, etc. | Supported |
+| Any AI agent with bash access | Supported |
+| Node.js | >= 18 |
 
-## 지원 플랫폼
+## Supported Platforms
 
-| 플랫폼     | 상태 |
-| ---------- | ---- |
-| Tistory    | 지원 |
-| Naver Blog | 예정 |
+| Platform | Status |
+| --- | --- |
+| Tistory | Supported |
+| Naver Blog | Planned |
 
-## 기술 스택
+## Tech Stack
 
-| 영역            | 기술                            | 설명                                              |
-| --------------- | ------------------------------- | ------------------------------------------------- |
-| CLI 프레임워크  | Commander.js                    | 명령어 정의, 옵션 파싱, `--spec` 스키마 자동 생성 |
-| 브라우저 자동화 | Playwright (Chromium)           | 로그인                                            |
-| 세션 관리       | JSON 파일 (`~/.viruagent-cli/`) | 쿠키 기반 세션 저장/복원                          |
-| 이미지 검색     | DuckDuckGo , Wikimedia, Commons | 키워드 기반 이미지 자동 검색                      |
-| 출력 형식       | JSON envelope                   | `{ ok, data }` / `{ ok, error, hint }`            |
+| Area | Tech | Description |
+| --- | --- | --- |
+| CLI Framework | Commander.js | Command definitions, option parsing, `--spec` schema |
+| Browser Automation | Playwright (Chromium) | Login automation |
+| Cookie Decryption | macOS Keychain + AES-128-CBC | Chrome session import (`--from-chrome`) |
+| Session Management | JSON file (`~/.viruagent-cli/`) | Cookie-based session save/restore |
+| Image Search | DuckDuckGo, Wikimedia, Commons | Keyword-based auto image search |
+| Output Format | JSON envelope | `{ ok, data }` / `{ ok, error, hint }` |
 
 ## Contributing
 
-PR과 피드백을 환영합니다!
+PRs and feedback are welcome!
 
-### 참여 방법
-
-1. **버그 리포트** — [Issues](https://github.com/greekr4/viruagent-cli/issues)에 올려주세요
-2. **기능 제안** — Issue에 `[Feature Request]` 태그로 제안해주세요
-3. **코드 기여** — Fork → 브랜치 생성 → PR
-
-### PR 가이드
+1. **Bug reports** — [Issues](https://github.com/greekr4/viruagent-cli/issues)
+2. **Feature requests** — Tag with `[Feature Request]`
+3. **Code contributions** — Fork → Branch → PR
 
 ```bash
-# 1. Fork 후 클론
 git clone https://github.com/<your-username>/viruagent-cli.git
-
-# 2. 브랜치 생성
 git checkout -b feature/my-feature
-
-# 3. 작업 후 커밋
 git commit -m "[FEAT] Add my feature"
-
-# 4. PR 생성
 git push origin feature/my-feature
 ```
-
-### 기여
-
-- 새로운 블로그 플랫폼 프로바이더 (Naver, WordPress 등)
-- 스킬 파일 템플릿 추가 (다른 AI 에이전트용)
-- 이미지 소스 확장
-- 테스트 코드 추가
 
 ## License
 
