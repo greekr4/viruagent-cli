@@ -1,6 +1,6 @@
 {
   "name": "viruagent-cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "AI-agent-optimized CLI for blog publishing (Tistory, Naver)",
   "private": false,
   "type": "commonjs",
@@ -30,6 +30,7 @@
     "skills/",
     "AGENTS.md",
     "README.md",
+    "README.ko.md",
     "LICENSE"
   ],
   "scripts": {
