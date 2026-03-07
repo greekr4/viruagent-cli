@@ -1,5 +1,5 @@
 const { chromium } = require('playwright');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
@@ -1734,7 +1734,7 @@ const persistTistorySession = async (context, targetSessionPath) => {
   );
 };
 
-const decryptChromeCookie = (encryptedValue, derivedKey) => {
+const decryptChromeCookieMac = (encryptedValue, derivedKey) => {
   if (!encryptedValue || encryptedValue.length < 4) return '';
   const prefix = encryptedValue.slice(0, 3).toString('ascii');
   if (prefix !== 'v10') return encryptedValue.toString('utf-8');
@@ -1757,19 +1757,136 @@ const decryptChromeCookie = (encryptedValue, derivedKey) => {
   }
 };
 
+const getWindowsChromeMasterKey = (chromeRoot) => {
+  const localStatePath = path.join(chromeRoot, 'Local State');
+  if (!fs.existsSync(localStatePath)) {
+    throw new Error('Chrome Local State 파일을 찾을 수 없습니다.');
+  }
+  const localState = JSON.parse(fs.readFileSync(localStatePath, 'utf-8'));
+  const encryptedKeyB64 = localState.os_crypt && localState.os_crypt.encrypted_key;
+  if (!encryptedKeyB64) {
+    throw new Error('Chrome Local State에서 암호화 키를 찾을 수 없습니다.');
+  }
+  const encryptedKeyWithPrefix = Buffer.from(encryptedKeyB64, 'base64');
+  // 앞 5바이트 "DPAPI" 접두사 제거
+  const encryptedKey = encryptedKeyWithPrefix.slice(5);
+  const encHex = encryptedKey.toString('hex');
+
+  // PowerShell DPAPI로 복호화
+  const psScript = `
+Add-Type -AssemblyName System.Security
+$encBytes = [byte[]]::new(${encryptedKey.length})
+$hex = '${encHex}'
+for ($i = 0; $i -lt $encBytes.Length; $i++) {
+  $encBytes[$i] = [Convert]::ToByte($hex.Substring($i * 2, 2), 16)
+}
+$decBytes = [System.Security.Cryptography.ProtectedData]::Unprotect($encBytes, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)
+$decHex = -join ($decBytes | ForEach-Object { $_.ToString('x2') })
+Write-Output $decHex
+`.trim().replace(/\n/g, '; ');
+
+  try {
+    const decHex = execSync(
+      `powershell -NoProfile -Command "${psScript}"`,
+      { encoding: 'utf-8', timeout: 10000 }
+    ).trim();
+    return Buffer.from(decHex, 'hex');
+  } catch {
+    throw new Error('Chrome 암호화 키를 DPAPI로 복호화할 수 없습니다.');
+  }
+};
+
+const decryptChromeCookieWindows = (encryptedValue, masterKey) => {
+  if (!encryptedValue || encryptedValue.length < 4) return '';
+  const prefix = encryptedValue.slice(0, 3).toString('ascii');
+  if (prefix !== 'v10' && prefix !== 'v20') return encryptedValue.toString('utf-8');
+
+  // AES-256-GCM: nonce(12바이트) + ciphertext + authTag(16바이트)
+  const nonce = encryptedValue.slice(3, 3 + 12);
+  const authTag = encryptedValue.slice(encryptedValue.length - 16);
+  const ciphertext = encryptedValue.slice(3 + 12, encryptedValue.length - 16);
+
+  try {
+    const decipher = crypto.createDecipheriv('aes-256-gcm', masterKey, nonce);
+    decipher.setAuthTag(authTag);
+    const dec = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+    return dec.toString('utf-8');
+  } catch {
+    return '';
+  }
+};
+
+const decryptChromeCookie = (encryptedValue, key) => {
+  if (process.platform === 'win32') {
+    return decryptChromeCookieWindows(encryptedValue, key);
+  }
+  return decryptChromeCookieMac(encryptedValue, key);
+};
+
+const copyFileViaVSS = (srcPath, destPath) => {
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'vss-copy.ps1');
+  if (!fs.existsSync(scriptPath)) return false;
+  try {
+    const result = execSync(
+      'powershell -NoProfile -ExecutionPolicy Bypass -File "' + scriptPath + '" -SourcePath "' + srcPath + '" -DestPath "' + destPath + '"',
+      { encoding: 'utf-8', timeout: 30000 }
+    ).trim();
+    return result.includes('OK');
+  } catch {
+    return false;
+  }
+};
+
+const isChromeRunning = () => {
+  try {
+    if (process.platform === 'win32') {
+      const result = execSync('tasklist /FI "IMAGENAME eq chrome.exe" /NH', { encoding: 'utf-8', timeout: 5000 });
+      return result.includes('chrome.exe');
+    }
+    const result = execSync('pgrep -x "Google Chrome" 2>/dev/null || pgrep -x chrome 2>/dev/null', { encoding: 'utf-8', timeout: 5000 });
+    return result.trim().length > 0;
+  } catch {
+    return false;
+  }
+};
+
 const extractChromeCookies = (cookiesDb, derivedKey, domainPattern) => {
   const tempDb = path.join(os.tmpdir(), `viruagent-cookies-${Date.now()}.db`);
+
+  // SQLite 온라인 백업 API 사용 (Chrome이 실행 중이어도 동작)
+  // execFileSync로 쉘을 거치지 않아 Windows 경로 공백/이스케이핑 문제 없음
+  const backupCmd = process.platform === 'win32'
+    ? `.backup "${tempDb}"`
+    : `.backup '${tempDb.replace(/'/g, "''")}'`;
   try {
-    execSync(`sqlite3 "${cookiesDb}" ".backup '${tempDb}'"`, { timeout: 5000 });
+    execFileSync('sqlite3', [cookiesDb, backupCmd], { stdio: 'ignore', timeout: 10000 });
   } catch {
-    throw new Error('Chrome 쿠키 DB 복사에 실패했습니다. Chrome이 실행 중이면 잠시 후 다시 시도해 주세요.');
+    // sqlite3 백업 실패 시 파일 복사 → VSS 순으로 폴백
+    let copied = false;
+    try {
+      fs.copyFileSync(cookiesDb, tempDb);
+      copied = true;
+    } catch {}
+    if (!copied && process.platform === 'win32') {
+      // Windows: VSS(Volume Shadow Copy)로 잠긴 파일 복사
+      copied = copyFileViaVSS(cookiesDb, tempDb);
+    }
+    if (!copied) {
+      throw new Error('Chrome 쿠키 DB 복사에 실패했습니다. Chrome이 실행 중이면 종료 후 다시 시도해 주세요.');
+    }
+  }
+
+  // 백업 후 남은 WAL/SHM 파일 제거 (깨끗한 DB 보장)
+  for (const suffix of ['-wal', '-shm', '-journal']) {
+    try { fs.unlinkSync(tempDb + suffix); } catch {}
   }
 
   try {
-    const rows = execSync(
-      `sqlite3 -separator '||' "${tempDb}" "SELECT host_key, name, value, hex(encrypted_value), path, expires_utc, is_secure, is_httponly, samesite FROM cookies WHERE host_key LIKE '${domainPattern}'"`,
-      { encoding: 'utf-8', timeout: 5000 }
-    ).trim();
+    const query = `SELECT host_key, name, value, hex(encrypted_value), path, expires_utc, is_secure, is_httponly, samesite FROM cookies WHERE host_key LIKE '${domainPattern}'`;
+    const rows = execFileSync('sqlite3', ['-separator', '||', tempDb, query], {
+      encoding: 'utf-8',
+      timeout: 5000,
+    }).trim();
     if (!rows) return [];
 
     const chromeEpochOffset = 11644473600;
@@ -1789,31 +1906,205 @@ const extractChromeCookies = (cookiesDb, derivedKey, domainPattern) => {
   }
 };
 
+const findWindowsChromePath = () => {
+  const candidates = [
+    path.join(process.env['PROGRAMFILES(X86)'] || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    path.join(process.env['PROGRAMFILES'] || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    path.join(process.env['LOCALAPPDATA'] || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+  ];
+  return candidates.find(p => fs.existsSync(p)) || null;
+};
+
+const generateSelfSignedCert = (domain) => {
+  const tempDir = path.join(os.tmpdir(), `viruagent-cert-${Date.now()}`);
+  fs.mkdirSync(tempDir, { recursive: true });
+  const keyPath = path.join(tempDir, 'key.pem');
+  const certPath = path.join(tempDir, 'cert.pem');
+
+  // openssl (Git for Windows에 포함)
+  const opensslPaths = [
+    'openssl',
+    'C:/Program Files/Git/usr/bin/openssl.exe',
+    'C:/Program Files (x86)/Git/usr/bin/openssl.exe',
+  ];
+  let generated = false;
+  for (const openssl of opensslPaths) {
+    try {
+      execSync(
+        `"${openssl}" req -x509 -newkey rsa:2048 -nodes -keyout "${keyPath}" -out "${certPath}" -days 1 -subj "/CN=${domain}"`,
+        { timeout: 10000, stdio: 'pipe' }
+      );
+      generated = true;
+      break;
+    } catch {}
+  }
+  if (!generated) {
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch {}
+    return null;
+  }
+  return { keyPath, certPath, tempDir };
+};
+
+const importSessionViaChromeDirectLaunch = async (targetSessionPath, chromeRoot, profileName) => {
+  // Windows Chrome 145+: v20 App Bound Encryption으로 외부에서 쿠키 복호화 불가
+  // HTTPS 서버 + DNS 리다이렉션으로 Chrome이 보내는 Cookie 헤더에서 세션 추출
+  if (isChromeRunning()) {
+    throw new Error(
+      'Chrome이 실행 중입니다. --from-chrome 세션 추출을 위해 Chrome을 종료한 후 다시 시도해 주세요.'
+    );
+  }
+
+  const chromePath = findWindowsChromePath();
+  if (!chromePath) {
+    throw new Error('Chrome 실행 파일을 찾을 수 없습니다.');
+  }
+
+  // 1. 자체 서명 인증서 생성 (openssl 필요)
+  const cert = generateSelfSignedCert('www.tistory.com');
+  if (!cert) {
+    throw new Error(
+      'openssl을 찾을 수 없습니다. Git for Windows를 설치하면 openssl이 포함됩니다.'
+    );
+  }
+
+  const https = require('https');
+  const { spawn } = require('child_process');
+
+  // 2. HTTPS 서버 시작 (포트 443)
+  const server = https.createServer({
+    key: fs.readFileSync(cert.keyPath),
+    cert: fs.readFileSync(cert.certPath),
+  });
+
+  try {
+    await new Promise((resolve, reject) => {
+      server.on('error', reject);
+      server.listen(443, '127.0.0.1', resolve);
+    });
+  } catch (e) {
+    try { fs.rmSync(cert.tempDir, { recursive: true, force: true }); } catch {}
+    throw new Error(`포트 443 바인딩 실패: ${e.message}. 관리자 권한으로 실행해 주세요.`);
+  }
+
+  // 3. 쿠키 수신 Promise
+  let chromeProc = null;
+  const cookiePromise = new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('Chrome 쿠키 추출 시간 초과 (15초)'));
+    }, 15000);
+
+    server.on('request', (req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end('<html><body>Session captured. You can close this window.</body></html>');
+
+      if (req.url === '/' || req.url === '') {
+        clearTimeout(timeout);
+        const cookieHeader = req.headers.cookie || '';
+        resolve(cookieHeader);
+      }
+    });
+  });
+
+  // 4. Chrome 실행 (기본 프로필, DNS 리다이렉션, 인증서 오류 무시)
+  chromeProc = spawn(chromePath, [
+    '--no-first-run',
+    '--no-default-browser-check',
+    `--profile-directory=${profileName}`,
+    '--host-resolver-rules=MAP www.tistory.com 127.0.0.1',
+    '--ignore-certificate-errors',
+    'https://www.tistory.com/',
+  ], { detached: true, stdio: 'ignore' });
+  chromeProc.unref();
+
+  try {
+    const cookieHeader = await cookiePromise;
+
+    // Cookie 헤더 파싱
+    const cookies = cookieHeader.split(';')
+      .map(c => c.trim())
+      .filter(Boolean)
+      .map(c => {
+        const eqIdx = c.indexOf('=');
+        if (eqIdx < 0) return null;
+        return { name: c.slice(0, eqIdx).trim(), value: c.slice(eqIdx + 1).trim() };
+      })
+      .filter(Boolean);
+
+    const tssession = cookies.find(c => c.name === 'TSSESSION');
+    if (!tssession || !tssession.value) {
+      throw new Error(
+        'Chrome에 티스토리 로그인 세션이 없습니다. Chrome에서 먼저 티스토리에 로그인해 주세요.'
+      );
+    }
+
+    // Cookie 헤더에는 domain/path/expires 정보가 없으므로 기본값 설정
+    const payload = {
+      cookies: cookies.map(c => ({
+        name: c.name,
+        value: c.value,
+        domain: '.tistory.com',
+        path: '/',
+        expires: -1,
+        httpOnly: false,
+        secure: true,
+        sameSite: 'None',
+      })),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await fs.promises.mkdir(path.dirname(targetSessionPath), { recursive: true });
+    await fs.promises.writeFile(targetSessionPath, JSON.stringify(payload, null, 2), 'utf-8');
+
+    return { cookieCount: cookies.length };
+  } finally {
+    server.close();
+    if (chromeProc) {
+      try { execSync(`taskkill /F /PID ${chromeProc.pid} /T`, { stdio: 'ignore', timeout: 5000 }); } catch {}
+    }
+    try { fs.rmSync(cert.tempDir, { recursive: true, force: true }); } catch {}
+  }
+};
+
 const importSessionFromChrome = async (targetSessionPath, profileName = 'Default') => {
-  const chromeRoot = path.join(os.homedir(), 'Library', 'Application Support', 'Google', 'Chrome');
+  let chromeRoot;
+  if (process.platform === 'win32') {
+    chromeRoot = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Google', 'Chrome', 'User Data');
+  } else {
+    chromeRoot = path.join(os.homedir(), 'Library', 'Application Support', 'Google', 'Chrome');
+  }
   if (!fs.existsSync(chromeRoot)) {
     throw new Error('Chrome이 설치되어 있지 않습니다.');
   }
 
   const profileDir = path.join(chromeRoot, profileName);
-  const cookiesDb = path.join(profileDir, 'Cookies');
+  // Windows 최신 Chrome은 Network/Cookies, 이전 버전은 Cookies
+  let cookiesDb = path.join(profileDir, 'Network', 'Cookies');
+  if (!fs.existsSync(cookiesDb)) {
+    cookiesDb = path.join(profileDir, 'Cookies');
+  }
   if (!fs.existsSync(cookiesDb)) {
     throw new Error(`Chrome 프로필 "${profileName}"에 쿠키 DB가 없습니다.`);
   }
 
-  // 1) Keychain에서 Chrome 암호화 키 추출
-  let keychainPassword;
-  try {
-    keychainPassword = execSync(
-      'security find-generic-password -s "Chrome Safe Storage" -w',
-      { encoding: 'utf-8', timeout: 5000 }
-    ).trim();
-  } catch {
-    throw new Error('Chrome Safe Storage 키를 Keychain에서 읽을 수 없습니다. macOS 권한을 확인해 주세요.');
+  let derivedKey;
+  if (process.platform === 'win32') {
+    // Windows: Local State → DPAPI로 마스터 키 복호화
+    derivedKey = getWindowsChromeMasterKey(chromeRoot);
+  } else {
+    // macOS: Keychain에서 Chrome 암호화 키 추출
+    let keychainPassword;
+    try {
+      keychainPassword = execSync(
+        'security find-generic-password -s "Chrome Safe Storage" -w',
+        { encoding: 'utf-8', timeout: 5000 }
+      ).trim();
+    } catch {
+      throw new Error('Chrome Safe Storage 키를 Keychain에서 읽을 수 없습니다. macOS 권한을 확인해 주세요.');
+    }
+    derivedKey = crypto.pbkdf2Sync(keychainPassword, 'saltysalt', 1003, 16, 'sha1');
   }
-  const derivedKey = crypto.pbkdf2Sync(keychainPassword, 'saltysalt', 1003, 16, 'sha1');
 
-  // 2) Chrome에서 tistory + kakao 쿠키 복호화 추출
+  // Chrome에서 tistory + kakao 쿠키 복호화 추출
   const tistoryCookies = extractChromeCookies(cookiesDb, derivedKey, '%tistory.com');
   const kakaoCookies = extractChromeCookies(cookiesDb, derivedKey, '%kakao.com');
 
@@ -1829,6 +2120,11 @@ const importSessionFromChrome = async (targetSessionPath, profileName = 'Default
   // 3) 카카오 세션 쿠키가 있으면 Playwright에 주입 후 자동 로그인
   const hasKakaoSession = kakaoCookies.some(c => c.domain.includes('kakao.com') && (c.name === '_kawlt' || c.name === '_kawltea' || c.name === '_karmt'));
   if (!hasKakaoSession) {
+    // Windows v20 App Bound Encryption: DPAPI만으로 복호화 불가
+    // Playwright persistent context (pipe 모드)로 Chrome 기본 프로필에서 직접 추출
+    if (process.platform === 'win32') {
+      return await importSessionViaChromeDirectLaunch(targetSessionPath, chromeRoot, profileName);
+    }
     throw new Error('Chrome에 카카오 로그인 세션이 없습니다. Chrome에서 먼저 카카오 계정에 로그인해 주세요.');
   }
 
