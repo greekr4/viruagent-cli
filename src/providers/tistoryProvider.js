@@ -1945,13 +1945,292 @@ const generateSelfSignedCert = (domain) => {
   return { keyPath, certPath, tempDir };
 };
 
+const CDP_DEBUG_PORT = 9222;
+
+const tryConnectCDP = async (port) => {
+  const http = require('http');
+  return new Promise((resolve) => {
+    http.get(`http://127.0.0.1:${port}/json/version`, { timeout: 2000 }, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try {
+          const info = JSON.parse(data);
+          resolve(info.webSocketDebuggerUrl || null);
+        } catch { resolve(null); }
+      });
+    }).on('error', () => resolve(null));
+  });
+};
+
+const findChromeDebugPort = async () => {
+  // 1. 고정 포트 9222 시도
+  const ws = await tryConnectCDP(CDP_DEBUG_PORT);
+  if (ws) return { port: CDP_DEBUG_PORT, wsUrl: ws };
+
+  // 2. DevToolsActivePort 파일 확인
+  const dtpPath = path.join(
+    process.env.LOCALAPPDATA || '',
+    'Google', 'Chrome', 'User Data', 'DevToolsActivePort'
+  );
+  try {
+    const content = fs.readFileSync(dtpPath, 'utf-8').trim();
+    const port = parseInt(content.split('\n')[0], 10);
+    if (port > 0) {
+      const ws2 = await tryConnectCDP(port);
+      if (ws2) return { port, wsUrl: ws2 };
+    }
+  } catch {}
+
+  return null;
+};
+
+const enableChromeDebugPort = () => {
+  // Chrome 바로가기에 --remote-debugging-port 추가 (한 번만 실행)
+  if (process.platform !== 'win32') return false;
+
+  const flag = `--remote-debugging-port=${CDP_DEBUG_PORT}`;
+  const shortcutPaths = [];
+
+  // 바탕화면, 시작 메뉴, 작업표시줄 바로가기 검색
+  const locations = [
+    path.join(os.homedir(), 'Desktop'),
+    path.join(os.homedir(), 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Start Menu', 'Programs'),
+    path.join(os.homedir(), 'AppData', 'Roaming', 'Microsoft', 'Internet Explorer', 'Quick Launch', 'User Pinned', 'TaskBar'),
+    'C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs',
+  ];
+  for (const loc of locations) {
+    try {
+      const files = fs.readdirSync(loc);
+      for (const f of files) {
+        if (/chrome/i.test(f) && f.endsWith('.lnk')) {
+          shortcutPaths.push(path.join(loc, f));
+        }
+      }
+    } catch {}
+  }
+  // Google Chrome 폴더 내부도 탐색
+  for (const loc of locations) {
+    try {
+      const chromeDir = path.join(loc, 'Google Chrome');
+      if (fs.existsSync(chromeDir)) {
+        const files = fs.readdirSync(chromeDir);
+        for (const f of files) {
+          if (/chrome/i.test(f) && f.endsWith('.lnk')) {
+            shortcutPaths.push(path.join(chromeDir, f));
+          }
+        }
+      }
+    } catch {}
+  }
+
+  let modified = 0;
+  for (const lnkPath of shortcutPaths) {
+    try {
+      const psScript = `
+$shell = New-Object -ComObject WScript.Shell
+$sc = $shell.CreateShortcut('${lnkPath.replace(/'/g, "''")}')
+if ($sc.Arguments -notmatch 'remote-debugging-port') {
+  $sc.Arguments = ($sc.Arguments + ' ${flag}').Trim()
+  $sc.Save()
+  Write-Output 'MODIFIED'
+} else {
+  Write-Output 'ALREADY'
+}`;
+      const result = execSync(`powershell -Command "${psScript.replace(/"/g, '\\"')}"`, {
+        timeout: 5000,
+        encoding: 'utf-8',
+      }).trim();
+      if (result === 'MODIFIED') modified++;
+    } catch {}
+  }
+  return modified > 0;
+};
+
+const extractCookiesFromCDP = async (port, targetSessionPath) => {
+  const http = require('http');
+  const WebSocket = require('ws');
+
+  // 1. 브라우저 레벨 CDP에 연결하여 tistory 탭 생성/탐색
+  const browserWsUrl = await tryConnectCDP(port);
+  if (!browserWsUrl) throw new Error('Chrome CDP 연결 실패');
+
+  // 2. 기존 tistory 탭 찾거나 새로 생성
+  const targetsJson = await new Promise((resolve, reject) => {
+    http.get(`http://127.0.0.1:${port}/json/list`, { timeout: 3000 }, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => resolve(data));
+    }).on('error', reject);
+  });
+  const targets = JSON.parse(targetsJson);
+  let pageTarget = targets.find(t => t.type === 'page' && t.url && t.url.includes('tistory'));
+
+  if (!pageTarget) {
+    // tistory 탭이 없으면 브라우저 CDP로 새 탭 생성
+    const bws = new WebSocket(browserWsUrl);
+    const newTargetId = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('탭 생성 시간 초과')), 10000);
+      bws.on('open', () => {
+        bws.send(JSON.stringify({ id: 1, method: 'Target.createTarget', params: { url: 'https://www.tistory.com/' } }));
+      });
+      bws.on('message', (msg) => {
+        const resp = JSON.parse(msg.toString());
+        if (resp.id === 1) {
+          clearTimeout(timeout);
+          resolve(resp.result?.targetId);
+          bws.close();
+        }
+      });
+      bws.on('error', (e) => { clearTimeout(timeout); reject(e); });
+    });
+    // 새 탭의 WebSocket URL 조회
+    await new Promise(r => setTimeout(r, 3000));
+    const newTargetsJson = await new Promise((resolve, reject) => {
+      http.get(`http://127.0.0.1:${port}/json/list`, { timeout: 3000 }, (res) => {
+        let data = '';
+        res.on('data', c => data += c);
+        res.on('end', () => resolve(data));
+      }).on('error', reject);
+    });
+    const newTargets = JSON.parse(newTargetsJson);
+    pageTarget = newTargets.find(t => t.id === newTargetId) || newTargets.find(t => t.type === 'page' && t.url && t.url.includes('tistory'));
+  }
+
+  if (!pageTarget || !pageTarget.webSocketDebuggerUrl) {
+    throw new Error('tistory 페이지 타겟을 찾을 수 없습니다.');
+  }
+
+  // 3. 페이지 레벨 CDP에서 Network.enable → Network.getAllCookies
+  const ws = new WebSocket(pageTarget.webSocketDebuggerUrl);
+  const cookies = await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('CDP 쿠키 추출 시간 초과')), 15000);
+    let msgId = 1;
+    ws.on('open', () => {
+      ws.send(JSON.stringify({ id: msgId++, method: 'Network.enable' }));
+    });
+    ws.on('message', (msg) => {
+      const resp = JSON.parse(msg.toString());
+      if (resp.id === 1) {
+        // Network enabled → getAllCookies
+        ws.send(JSON.stringify({ id: msgId++, method: 'Network.getAllCookies' }));
+      }
+      if (resp.id === 2) {
+        clearTimeout(timeout);
+        resolve(resp.result?.cookies || []);
+        ws.close();
+      }
+    });
+    ws.on('error', (e) => { clearTimeout(timeout); reject(e); });
+  });
+
+  const tistoryCookies = cookies.filter(c => String(c.domain).includes('tistory'));
+  const tssession = tistoryCookies.find(c => c.name === 'TSSESSION');
+  if (!tssession || !tssession.value) {
+    throw new Error('Chrome에 티스토리 로그인 세션이 없습니다. Chrome에서 먼저 티스토리에 로그인해 주세요.');
+  }
+
+  const payload = {
+    cookies: tistoryCookies.map(c => ({
+      name: c.name, value: c.value, domain: c.domain,
+      path: c.path || '/', expires: c.expires > 0 ? c.expires : -1,
+      httpOnly: !!c.httpOnly, secure: !!c.secure,
+      sameSite: c.sameSite || 'None',
+    })),
+    updatedAt: new Date().toISOString(),
+  };
+  await fs.promises.mkdir(path.dirname(targetSessionPath), { recursive: true });
+  await fs.promises.writeFile(targetSessionPath, JSON.stringify(payload, null, 2), 'utf-8');
+  return { cookieCount: tistoryCookies.length };
+};
+
+const getOrCreateJunctionPath = (chromeRoot) => {
+  // Chrome 145+: 기본 user-data-dir에서는 --remote-debugging-port가 작동하지 않음
+  // Junction point로 같은 디렉토리를 다른 경로로 가리켜서 우회
+  if (process.platform !== 'win32') return chromeRoot;
+
+  const junctionPath = path.join(path.dirname(chromeRoot), 'ChromeDebug');
+  if (!fs.existsSync(junctionPath)) {
+    try {
+      execSync(`cmd /c "mklink /J "${junctionPath}" "${chromeRoot}""`, {
+        timeout: 5000, stdio: 'pipe',
+      });
+    } catch {
+      // Junction 생성 실패 시 원본 경로 사용 (디버그 포트 작동 안 할 수 있음)
+      return chromeRoot;
+    }
+  }
+  return junctionPath;
+};
+
+const extractCookiesViaCDP = async (targetSessionPath, chromeRoot, profileName) => {
+  // Chrome 실행 중: CDP(Chrome DevTools Protocol)로 쿠키 추출
+  // 1단계: 이미 디버그 포트가 열려있으면 바로 연결 (크롬 종료 없음)
+  // 2단계: 없으면 한 번만 재시작 + 바로가기 수정 (이후 재시작 불필요)
+  const { spawn } = require('child_process');
+
+  // 1. 이미 디버그 포트가 열려있는지 확인
+  const existing = await findChromeDebugPort();
+  if (existing) {
+    console.log(`[chrome-cdp] 기존 Chrome 디버그 포트(${existing.port}) 감지 — 크롬 종료 없이 쿠키 추출`);
+    return await extractCookiesFromCDP(existing.port, targetSessionPath);
+  }
+
+  // 2. 디버그 포트 없음 → Chrome 바로가기에 디버그 포트 추가 (이후 재시작 불필요)
+  console.log('[chrome-cdp] Chrome 디버그 포트 미감지 — 바로가기에 --remote-debugging-port 추가 중...');
+  const shortcutModified = enableChromeDebugPort();
+  if (shortcutModified) {
+    console.log('[chrome-cdp] Chrome 바로가기 수정 완료 — 다음부터는 크롬 종료 없이 쿠키 추출 가능');
+  }
+
+  // 3. Chrome을 graceful하게 종료하고 디버그 포트로 재시작 (최초 1회만)
+  const chromePath = findWindowsChromePath();
+  if (!chromePath) throw new Error('Chrome 실행 파일을 찾을 수 없습니다.');
+
+  console.log('[chrome-cdp] Chrome을 디버그 포트와 함께 재시작합니다 (탭 자동 복원)...');
+  try {
+    if (process.platform === 'win32') {
+      execSync('cmd /c "taskkill /IM chrome.exe"', { stdio: 'ignore', timeout: 10000 });
+    }
+  } catch {}
+  await new Promise(r => setTimeout(r, 2000));
+  if (isChromeRunning()) {
+    try { execSync('cmd /c "taskkill /F /IM chrome.exe"', { stdio: 'ignore', timeout: 5000 }); } catch {}
+    await new Promise(r => setTimeout(r, 1000));
+  }
+
+  // 4. Junction 경로로 디버그 포트 + 세션 복원 재시작
+  //    Chrome 145+는 기본 user-data-dir에서 디버그 포트를 거부하므로 junction으로 우회
+  const junctionRoot = getOrCreateJunctionPath(chromeRoot);
+  const chromeProc = spawn(chromePath, [
+    `--remote-debugging-port=${CDP_DEBUG_PORT}`,
+    '--remote-allow-origins=*',
+    '--restore-last-session',
+    `--user-data-dir=${junctionRoot}`,
+    `--profile-directory=${profileName}`,
+  ], { detached: true, stdio: 'ignore' });
+  chromeProc.unref();
+
+  // 5. CDP 연결 대기
+  let connected = null;
+  const maxWait = 15000;
+  const start = Date.now();
+  while (Date.now() - start < maxWait) {
+    await new Promise(r => setTimeout(r, 500));
+    connected = await findChromeDebugPort();
+    if (connected) break;
+  }
+  if (!connected) throw new Error('Chrome 디버그 포트 연결 시간 초과');
+
+  // 6. 쿠키 추출 (Chrome은 계속 실행 상태 유지 — 종료하지 않음)
+  return await extractCookiesFromCDP(connected.port, targetSessionPath);
+};
+
 const importSessionViaChromeDirectLaunch = async (targetSessionPath, chromeRoot, profileName) => {
   // Windows Chrome 145+: v20 App Bound Encryption으로 외부에서 쿠키 복호화 불가
-  // HTTPS 서버 + DNS 리다이렉션으로 Chrome이 보내는 Cookie 헤더에서 세션 추출
+  // Chrome 실행 중이면 CDP 방식으로 추출 (잠시 재시작, 탭 자동 복원)
   if (isChromeRunning()) {
-    throw new Error(
-      'Chrome이 실행 중입니다. --from-chrome 세션 추출을 위해 Chrome을 종료한 후 다시 시도해 주세요.'
-    );
+    return await extractCookiesViaCDP(targetSessionPath, chromeRoot, profileName);
   }
 
   const chromePath = findWindowsChromePath();
@@ -2005,7 +2284,7 @@ const importSessionViaChromeDirectLaunch = async (targetSessionPath, chromeRoot,
     });
   });
 
-  // 4. Chrome 실행 (기본 프로필, DNS 리다이렉션, 인증서 오류 무시)
+  // 4. Chrome 실행 (Chrome이 꺼진 상태에서만 실행됨 - DNS 리다이렉션, 인증서 오류 무시)
   chromeProc = spawn(chromePath, [
     '--no-first-run',
     '--no-default-browser-check',
