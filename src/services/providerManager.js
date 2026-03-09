@@ -1,6 +1,6 @@
 const path = require('path');
 const { getSessionPath } = require('../storage/sessionStore');
-const createTistoryProvider = require('../providers/tistoryProvider');
+const createTistoryProvider = require('../providers/tistory');
 const createNaverProvider = require('../providers/naverProvider');
 
 const providerFactory = {
