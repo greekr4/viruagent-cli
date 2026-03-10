@@ -2,3 +2,5 @@
 .env
 .env.*
 AGENTS.md
+/.superset
+/.openchrome
