@@ -64,6 +64,8 @@ Tell the user that viruagent-cli installation is complete.
 
 ## Login
 
+### Tistory
+
 ```bash
 # Import session from Chrome (no ID/PW needed, macOS only)
 npx viruagent-cli login --from-chrome
@@ -73,6 +75,19 @@ npx viruagent-cli login --from-chrome --profile "Profile 2"
 
 # Traditional Kakao login (ID/PW required)
 npx viruagent-cli login --username <id> --password <pw> --headless
+```
+
+### Naver Blog
+
+```bash
+# Import session from Chrome (recommended)
+npx viruagent-cli login --provider naver --from-chrome
+
+# Manual login via browser
+npx viruagent-cli login --provider naver --manual
+
+# Auto login with credentials
+npx viruagent-cli login --provider naver --username <id> --password <pw>
 ```
 
 > [!TIP]
@@ -102,7 +117,7 @@ Ask the agent for detailed usage or customization help.
 | Platform | Status |
 | --- | --- |
 | Tistory | Supported |
-| Naver Blog | Planned |
+| Naver Blog | Supported |
 
 ## Tech Stack
 
@@ -110,9 +125,10 @@ Ask the agent for detailed usage or customization help.
 | --- | --- |
 | CLI Framework | Commander.js |
 | Browser Automation | Playwright (Chromium) |
-| Cookie Decryption | macOS Keychain + AES-128-CBC |
+| Cookie Decryption | macOS Keychain + AES-128-CBC (Tistory & Naver) |
 | Session Management | JSON file (`~/.viruagent-cli/`) |
-| Image Search | DuckDuckGo, Wikimedia, Commons |
+| Image Search | DuckDuckGo, Wikimedia Commons |
+| Naver Editor | SE Editor component model + RabbitWrite API |
 | Output Format | JSON envelope (`{ ok, data }` / `{ ok, error, hint }`) |
 
 ## Contributing

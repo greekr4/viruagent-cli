@@ -64,6 +64,8 @@ Tell the user that viruagent-cli installation is complete.
 
 ## 로그인
 
+### Tistory
+
 ```bash
 # Chrome 세션 임포트 (ID/PW 불필요, macOS 전용)
 npx viruagent-cli login --from-chrome
@@ -73,6 +75,19 @@ npx viruagent-cli login --from-chrome --profile "Profile 2"
 
 # 기존 카카오 로그인 (ID/PW 필요)
 npx viruagent-cli login --username <id> --password <pw> --headless
+```
+
+### Naver Blog
+
+```bash
+# Chrome 세션 임포트 (권장)
+npx viruagent-cli login --provider naver --from-chrome
+
+# 수동 로그인 (브라우저에서 직접 로그인)
+npx viruagent-cli login --provider naver --manual
+
+# 자동 로그인 (ID/PW)
+npx viruagent-cli login --provider naver --username <id> --password <pw>
 ```
 
 > [!TIP]
@@ -102,7 +117,7 @@ npx viruagent-cli login --username <id> --password <pw> --headless
 | 플랫폼 | 상태 |
 | --- | --- |
 | Tistory | 지원 |
-| Naver Blog | 예정 |
+| Naver Blog | 지원 |
 
 ## 기술 스택
 
@@ -110,9 +125,10 @@ npx viruagent-cli login --username <id> --password <pw> --headless
 | --- | --- |
 | CLI 프레임워크 | Commander.js |
 | 브라우저 자동화 | Playwright (Chromium) |
-| 쿠키 복호화 | macOS Keychain + AES-128-CBC |
+| 쿠키 복호화 | macOS Keychain + AES-128-CBC (Tistory & Naver) |
 | 세션 관리 | JSON 파일 (`~/.viruagent-cli/`) |
-| 이미지 검색 | DuckDuckGo, Wikimedia, Commons |
+| 이미지 검색 | DuckDuckGo, Wikimedia Commons |
+| 네이버 에디터 | SE Editor 컴포넌트 모델 + RabbitWrite API |
 | 출력 형식 | JSON envelope (`{ ok, data }` / `{ ok, error, hint }`) |
 
 ## Contributing
