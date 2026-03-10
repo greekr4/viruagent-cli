@@ -192,6 +192,19 @@ const findWindowsChromePath = () => {
   return candidates.find(p => fs.existsSync(p)) || null;
 };
 
+const findMacChromePath = () => {
+  const candidates = [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    path.join(os.homedir(), 'Applications', 'Google Chrome.app', 'Contents', 'MacOS', 'Google Chrome'),
+  ];
+  return candidates.find(p => fs.existsSync(p)) || null;
+};
+
+const findChromePath = () => {
+  if (process.platform === 'win32') return findWindowsChromePath();
+  return findMacChromePath();
+};
+
 const generateSelfSignedCert = (domain) => {
   const tempDir = path.join(os.tmpdir(), `viruagent-cert-${Date.now()}`);
   fs.mkdirSync(tempDir, { recursive: true });
@@ -245,19 +258,28 @@ const findChromeDebugPort = async () => {
   const ws = await tryConnectCDP(CDP_DEBUG_PORT);
   if (ws) return { port: CDP_DEBUG_PORT, wsUrl: ws };
 
-  // 2. DevToolsActivePort 파일 확인
-  const dtpPath = path.join(
-    process.env.LOCALAPPDATA || '',
-    'Google', 'Chrome', 'User Data', 'DevToolsActivePort'
-  );
-  try {
-    const content = fs.readFileSync(dtpPath, 'utf-8').trim();
-    const port = parseInt(content.split('\n')[0], 10);
-    if (port > 0) {
-      const ws2 = await tryConnectCDP(port);
-      if (ws2) return { port, wsUrl: ws2 };
-    }
-  } catch {}
+  // 2. DevToolsActivePort 파일 확인 (Windows/macOS 모두)
+  const dtpPaths = [];
+  if (process.platform === 'win32') {
+    dtpPaths.push(path.join(
+      process.env.LOCALAPPDATA || '',
+      'Google', 'Chrome', 'User Data', 'DevToolsActivePort'
+    ));
+  } else {
+    dtpPaths.push(path.join(
+      os.homedir(), 'Library', 'Application Support', 'Google', 'Chrome', 'DevToolsActivePort'
+    ));
+  }
+  for (const dtpPath of dtpPaths) {
+    try {
+      const content = fs.readFileSync(dtpPath, 'utf-8').trim();
+      const port = parseInt(content.split('\n')[0], 10);
+      if (port > 0) {
+        const ws2 = await tryConnectCDP(port);
+        if (ws2) return { port, wsUrl: ws2 };
+      }
+    } catch {}
+  }
 
   return null;
 };
@@ -440,10 +462,32 @@ const getOrCreateJunctionPath = (chromeRoot) => {
   return junctionPath;
 };
 
+const gracefulKillChrome = async () => {
+  try {
+    if (process.platform === 'win32') {
+      execSync('cmd /c "taskkill /IM chrome.exe"', { stdio: 'ignore', timeout: 10000 });
+    } else {
+      // macOS: SIGTERM으로 graceful 종료
+      execSync('pkill -TERM "Google Chrome" 2>/dev/null || true', { stdio: 'ignore', timeout: 10000 });
+    }
+  } catch {}
+  await new Promise(r => setTimeout(r, 2000));
+  if (isChromeRunning()) {
+    try {
+      if (process.platform === 'win32') {
+        execSync('cmd /c "taskkill /F /IM chrome.exe"', { stdio: 'ignore', timeout: 5000 });
+      } else {
+        execSync('pkill -9 "Google Chrome" 2>/dev/null || true', { stdio: 'ignore', timeout: 5000 });
+      }
+    } catch {}
+    await new Promise(r => setTimeout(r, 1000));
+  }
+};
+
 const extractCookiesViaCDP = async (targetSessionPath, chromeRoot, profileName) => {
   // Chrome 실행 중: CDP(Chrome DevTools Protocol)로 쿠키 추출
   // 1단계: 이미 디버그 포트가 열려있으면 바로 연결 (크롬 종료 없음)
-  // 2단계: 없으면 한 번만 재시작 + 바로가기 수정 (이후 재시작 불필요)
+  // 2단계: 없으면 한 번만 재시작 (Windows: 바로가기 수정, macOS: 직접 재시작)
   const { spawn } = require('child_process');
 
   // 1. 이미 디버그 포트가 열려있는지 확인
@@ -453,42 +497,39 @@ const extractCookiesViaCDP = async (targetSessionPath, chromeRoot, profileName) 
     return await extractCookiesFromCDP(existing.port, targetSessionPath);
   }
 
-  // 2. 디버그 포트 없음 → Chrome 바로가기에 디버그 포트 추가 (이후 재시작 불필요)
-  console.log('[chrome-cdp] Chrome 디버그 포트 미감지 — 바로가기에 --remote-debugging-port 추가 중...');
-  const shortcutModified = enableChromeDebugPort();
-  if (shortcutModified) {
-    console.log('[chrome-cdp] Chrome 바로가기 수정 완료 — 다음부터는 크롬 종료 없이 쿠키 추출 가능');
+  // 2. 디버그 포트 없음 → Windows만 바로가기 수정 (macOS는 바로가기 개념 없음)
+  if (process.platform === 'win32') {
+    console.log('[chrome-cdp] Chrome 디버그 포트 미감지 — 바로가기에 --remote-debugging-port 추가 중...');
+    const shortcutModified = enableChromeDebugPort();
+    if (shortcutModified) {
+      console.log('[chrome-cdp] Chrome 바로가기 수정 완료 — 다음부터는 크롬 종료 없이 쿠키 추출 가능');
+    }
   }
 
-  // 3. Chrome을 graceful하게 종료하고 디버그 포트로 재시작 (최초 1회만)
-  const chromePath = findWindowsChromePath();
+  // 3. Chrome 경로 확인
+  const chromePath = findChromePath();
   if (!chromePath) throw new Error('Chrome 실행 파일을 찾을 수 없습니다.');
 
+  // 4. Chrome을 graceful하게 종료하고 디버그 포트로 재시작 (최초 1회만)
   console.log('[chrome-cdp] Chrome을 디버그 포트와 함께 재시작합니다 (탭 자동 복원)...');
-  try {
-    if (process.platform === 'win32') {
-      execSync('cmd /c "taskkill /IM chrome.exe"', { stdio: 'ignore', timeout: 10000 });
-    }
-  } catch {}
-  await new Promise(r => setTimeout(r, 2000));
-  if (isChromeRunning()) {
-    try { execSync('cmd /c "taskkill /F /IM chrome.exe"', { stdio: 'ignore', timeout: 5000 }); } catch {}
-    await new Promise(r => setTimeout(r, 1000));
-  }
+  await gracefulKillChrome();
 
-  // 4. Junction 경로로 디버그 포트 + 세션 복원 재시작
-  //    Chrome 145+는 기본 user-data-dir에서 디버그 포트를 거부하므로 junction으로 우회
-  const junctionRoot = getOrCreateJunctionPath(chromeRoot);
+  // 5. 디버그 포트 + 세션 복원 재시작
+  //    Windows Chrome 145+: Junction으로 user-data-dir 우회
+  //    macOS: user-data-dir 직접 지정
+  const userDataDir = process.platform === 'win32'
+    ? getOrCreateJunctionPath(chromeRoot)
+    : chromeRoot;
   const chromeProc = spawn(chromePath, [
     `--remote-debugging-port=${CDP_DEBUG_PORT}`,
     '--remote-allow-origins=*',
     '--restore-last-session',
-    `--user-data-dir=${junctionRoot}`,
+    `--user-data-dir=${userDataDir}`,
     `--profile-directory=${profileName}`,
   ], { detached: true, stdio: 'ignore' });
   chromeProc.unref();
 
-  // 5. CDP 연결 대기
+  // 6. CDP 연결 대기
   let connected = null;
   const maxWait = 15000;
   const start = Date.now();
@@ -499,7 +540,7 @@ const extractCookiesViaCDP = async (targetSessionPath, chromeRoot, profileName) 
   }
   if (!connected) throw new Error('Chrome 디버그 포트 연결 시간 초과');
 
-  // 6. 쿠키 추출 (Chrome은 계속 실행 상태 유지 — 종료하지 않음)
+  // 7. 쿠키 추출 (Chrome은 계속 실행 상태 유지 — 종료하지 않음)
   return await extractCookiesFromCDP(connected.port, targetSessionPath);
 };
 
@@ -676,12 +717,16 @@ const importSessionFromChrome = async (targetSessionPath, profileName = 'Default
   // 3) 카카오 세션 쿠키가 있으면 Playwright에 주입 후 자동 로그인
   const hasKakaoSession = kakaoCookies.some(c => c.domain.includes('kakao.com') && (c.name === '_kawlt' || c.name === '_kawltea' || c.name === '_karmt'));
   if (!hasKakaoSession) {
-    // Windows v20 App Bound Encryption: DPAPI만으로 복호화 불가
-    // Playwright persistent context (pipe 모드)로 Chrome 기본 프로필에서 직접 추출
+    // 쿠키 복호화로 세션을 얻을 수 없는 경우 → CDP로 Chrome에서 직접 추출
+    if (isChromeRunning()) {
+      return await extractCookiesViaCDP(targetSessionPath, chromeRoot, profileName);
+    }
+    // Windows: Chrome이 꺼져있으면 DirectLaunch 방식으로 추출
     if (process.platform === 'win32') {
       return await importSessionViaChromeDirectLaunch(targetSessionPath, chromeRoot, profileName);
     }
-    throw new Error('Chrome에 카카오 로그인 세션이 없습니다. Chrome에서 먼저 카카오 계정에 로그인해 주세요.');
+    // macOS: Chrome이 꺼져있으면 CDP로 재시작하여 추출
+    return await extractCookiesViaCDP(targetSessionPath, chromeRoot, profileName);
   }
 
   const browser = await chromium.launch({ headless: true });
