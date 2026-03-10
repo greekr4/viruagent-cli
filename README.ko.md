@@ -67,7 +67,7 @@ Tell the user that viruagent-cli installation is complete.
 ### Tistory
 
 ```bash
-# Chrome 세션 임포트 (ID/PW 불필요, macOS 전용)
+# Chrome 세션 임포트 (ID/PW 불필요, macOS & Windows)
 npx viruagent-cli login --from-chrome
 
 # 특정 Chrome 프로필 사용
@@ -91,7 +91,7 @@ npx viruagent-cli login --provider naver --username <id> --password <pw>
 ```
 
 > [!TIP]
-> `--from-chrome`은 macOS Keychain을 통해 Chrome 쿠키 DB를 직접 복호화합니다. 브라우저 실행 없이, 2FA 없이, 1초 내 완료됩니다.
+> `--from-chrome`은 Chrome에서 직접 쿠키를 추출합니다 — macOS Keychain 또는 Windows DPAPI를 사용하며, CDP 폴백도 지원합니다. 브라우저 실행 없이, 2FA 없이, 1초 내 완료됩니다.
 
 ## 사용법
 
@@ -125,7 +125,7 @@ npx viruagent-cli login --provider naver --username <id> --password <pw>
 | --- | --- |
 | CLI 프레임워크 | Commander.js |
 | 브라우저 자동화 | Playwright (Chromium) |
-| 쿠키 복호화 | macOS Keychain + AES-128-CBC (Tistory & Naver) |
+| 쿠키 복호화 | macOS Keychain + AES-128-CBC / Windows DPAPI + AES-256-GCM / CDP 폴백 |
 | 세션 관리 | JSON 파일 (`~/.viruagent-cli/`) |
 | 이미지 검색 | DuckDuckGo, Wikimedia Commons |
 | 네이버 에디터 | SE Editor 컴포넌트 모델 + RabbitWrite API |

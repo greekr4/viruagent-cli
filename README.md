@@ -67,7 +67,7 @@ Tell the user that viruagent-cli installation is complete.
 ### Tistory
 
 ```bash
-# Import session from Chrome (no ID/PW needed, macOS only)
+# Import session from Chrome (no ID/PW needed, macOS & Windows)
 npx viruagent-cli login --from-chrome
 
 # Use a specific Chrome profile
@@ -91,7 +91,7 @@ npx viruagent-cli login --provider naver --username <id> --password <pw>
 ```
 
 > [!TIP]
-> `--from-chrome` decrypts Chrome's cookie database directly via macOS Keychain. No browser launch, no 2FA — completes in under 1 second.
+> `--from-chrome` extracts cookies from Chrome directly — via macOS Keychain or Windows DPAPI, with CDP fallback. No browser launch, no 2FA — completes in under 1 second.
 
 ## Usage
 
@@ -125,7 +125,7 @@ Ask the agent for detailed usage or customization help.
 | --- | --- |
 | CLI Framework | Commander.js |
 | Browser Automation | Playwright (Chromium) |
-| Cookie Decryption | macOS Keychain + AES-128-CBC (Tistory & Naver) |
+| Cookie Decryption | macOS Keychain + AES-128-CBC / Windows DPAPI + AES-256-GCM / CDP fallback |
 | Session Management | JSON file (`~/.viruagent-cli/`) |
 | Image Search | DuckDuckGo, Wikimedia Commons |
 | Naver Editor | SE Editor component model + RabbitWrite API |
