@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>블로그 분석 뷰어</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, 'Pretendard', sans-serif; background: #0f0f0f; color: #e0e0e0; min-height: 100vh; }
+
+  /* Header */
+  .header { background: #1a1a2e; border-bottom: 1px solid #333; padding: 20px 32px; display: flex; align-items: center; gap: 16px; }
+  .header h1 { font-size: 20px; font-weight: 700; color: #fff; }
+  .header .badge { background: #6c5ce7; color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+
+  /* Controls */
+  .controls { padding: 16px 32px; background: #161625; border-bottom: 1px solid #222; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .controls label { font-size: 13px; color: #888; }
+  .controls select, .controls input[type="file"] { background: #222; color: #e0e0e0; border: 1px solid #444; border-radius: 6px; padding: 8px 12px; font-size: 13px; }
+  .controls select:focus, .controls input:focus { border-color: #6c5ce7; outline: none; }
+  input[type="text"], input[type="number"] { background: #222; color: #e0e0e0; border: 1px solid #444; border-radius: 6px; padding: 8px 12px; font-size: 13px; }
+  input[type="text"]:focus, input[type="number"]:focus { border-color: #6c5ce7; outline: none; }
+  .btn { background: #6c5ce7; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .btn:hover { background: #5a4bd1; }
+  .btn:disabled { background: #444; cursor: not-allowed; }
+  .btn-outline { background: transparent; border: 1px solid #6c5ce7; color: #6c5ce7; }
+  .btn-outline:hover { background: rgba(108,92,231,0.1); }
+  .btn-danger { background: transparent; border: 1px solid #e17055; color: #e17055; }
+  .btn-danger:hover { background: rgba(225,112,85,0.1); }
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
+
+  /* Analyze form */
+  .analyze-bar { padding: 16px 32px; background: #12121f; border-bottom: 1px solid #333; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .analyze-bar .sep { width: 1px; height: 24px; background: #333; }
+
+  /* Log panel */
+  .log-panel { background: #0a0a14; border: 1px solid #222; border-radius: 8px; margin: 0 32px 16px; max-height: 200px; overflow-y: auto; font-family: 'SF Mono', monospace; font-size: 12px; line-height: 1.6; display: none; }
+  .log-panel.visible { display: block; }
+  .log-line { padding: 2px 12px; border-bottom: 1px solid #111; color: #aaa; }
+  .log-line.error { color: #e17055; }
+  .log-line.done { color: #55efc4; font-weight: 600; }
+
+  /* Layout */
+  .content { display: grid; grid-template-columns: 1fr 1fr; gap: 0; min-height: calc(100vh - 200px); }
+  .panel { padding: 24px 32px; overflow-y: auto; max-height: calc(100vh - 200px); }
+  .panel-left { border-right: 1px solid #222; }
+
+  /* Cards */
+  .card { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .card h3 { font-size: 14px; color: #6c5ce7; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* Stats grid */
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .stat-item { background: #12121f; border-radius: 8px; padding: 14px; text-align: center; }
+  .stat-value { font-size: 24px; font-weight: 700; color: #fff; }
+  .stat-label { font-size: 11px; color: #888; margin-top: 4px; }
+
+  /* Bar chart */
+  .bar-chart { display: flex; flex-direction: column; gap: 8px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-label { width: 80px; font-size: 12px; color: #aaa; text-align: right; flex-shrink: 0; }
+  .bar-track { flex: 1; background: #12121f; border-radius: 4px; height: 24px; position: relative; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; color: #fff; font-weight: 600; min-width: 30px; transition: width 0.6s ease; }
+  .bar-fill.c1 { background: linear-gradient(90deg, #6c5ce7, #a29bfe); }
+  .bar-fill.c2 { background: linear-gradient(90deg, #00b894, #55efc4); }
+  .bar-fill.c3 { background: linear-gradient(90deg, #e17055, #fab1a0); }
+  .bar-fill.c4 { background: linear-gradient(90deg, #fdcb6e, #ffeaa7); color: #333; }
+
+  /* Post list */
+  .post-item { background: #12121f; border-radius: 8px; padding: 14px; margin-bottom: 8px; cursor: pointer; border: 1px solid transparent; transition: border-color 0.2s; }
+  .post-item:hover { border-color: #6c5ce7; }
+  .post-item.active { border-color: #6c5ce7; background: #1a1a35; }
+  .post-title { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+  .post-meta { font-size: 11px; color: #888; display: flex; gap: 12px; flex-wrap: wrap; }
+  .post-meta span { display: flex; align-items: center; gap: 4px; }
+
+  /* Structure pattern */
+  .structure-flow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .flow-tag { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .flow-tag.intro { background: #2d3436; color: #74b9ff; }
+  .flow-tag.heading { background: #2d3436; color: #a29bfe; }
+  .flow-tag.image { background: #2d3436; color: #55efc4; }
+  .flow-tag.outro { background: #2d3436; color: #fab1a0; }
+
+  /* Keywords */
+  .keyword-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
+  .keyword-tag { background: #12121f; border: 1px solid #333; border-radius: 16px; padding: 4px 10px; font-size: 12px; color: #ddd; }
+  .keyword-tag .count { color: #6c5ce7; font-weight: 700; margin-left: 4px; }
+
+  /* Headings detail */
+  .heading-item { padding: 8px 12px; border-left: 3px solid #6c5ce7; margin-bottom: 6px; background: #12121f; border-radius: 0 6px 6px 0; }
+  .heading-item .tag { font-size: 10px; color: #6c5ce7; font-weight: 700; margin-right: 8px; }
+  .heading-item .text { font-size: 13px; color: #ddd; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 60px 20px; }
+  .empty h2 { font-size: 18px; color: #666; margin-bottom: 8px; }
+  .empty p { font-size: 13px; color: #555; line-height: 1.8; }
+
+  /* Paragraph distribution */
+  .dist-row { display: flex; gap: 12px; }
+  .dist-item { flex: 1; text-align: center; padding: 12px; background: #12121f; border-radius: 8px; }
+  .dist-value { font-size: 20px; font-weight: 700; color: #fff; }
+  .dist-label { font-size: 10px; color: #888; margin-top: 4px; }
+
+  /* Comparison table */
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .compare-table th { text-align: left; padding: 8px; color: #888; border-bottom: 1px solid #333; font-weight: 500; }
+  .compare-table td { padding: 8px; border-bottom: 1px solid #1a1a2e; color: #ddd; }
+  .compare-table tr:hover td { background: #12121f; }
+
+  /* Result list sidebar items */
+  .result-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #12121f; border-radius: 6px; margin-bottom: 4px; cursor: pointer; border: 1px solid transparent; transition: all 0.15s; font-size: 12px; }
+  .result-item:hover { border-color: #6c5ce7; }
+  .result-item.active { border-color: #6c5ce7; background: #1a1a35; }
+  .result-item .info { flex: 1; min-width: 0; }
+  .result-item .name { color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .result-item .date { color: #666; font-size: 10px; }
+
+  /* Spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #555; border-top-color: #6c5ce7; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .content { grid-template-columns: 1fr; }
+    .panel { max-height: none; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>블로그 분석 뷰어</h1>
+  <span class="badge">BETA</span>
+</div>
+
+<!-- 분석 실행 바 -->
+<div class="analyze-bar">
+  <input type="text" id="keyword" placeholder="분석할 키워드 입력" style="width: 220px;" />
+  <select id="provider">
+    <option value="naver">네이버</option>
+    <option value="tistory">티스토리</option>
+  </select>
+  <label style="font-size:12px; color:#888;">상위</label>
+  <input type="number" id="topN" value="5" min="1" max="20" style="width:60px;" />
+  <button class="btn" id="analyzeBtn" onclick="startAnalysis()">분석 시작</button>
+  <div class="sep"></div>
+  <button class="btn btn-outline" onclick="exportMarkdown()">패턴 MD 내보내기</button>
+</div>
+
+<!-- 로그 패널 -->
+<div class="log-panel" id="logPanel"></div>
+
+<!-- 불러오기 컨트롤 -->
+<div class="controls">
+  <label>저장된 분석:</label>
+  <select id="fileSelect" style="min-width: 300px;"><option value="">-- 선택 --</option></select>
+  <button class="btn btn-sm" onclick="loadSelected()">불러오기</button>
+  <button class="btn btn-sm btn-danger" onclick="deleteSelected()">삭제</button>
+  <div class="sep" style="width:1px; height:20px; background:#333;"></div>
+  <label>직접 업로드:</label>
+  <input type="file" id="fileInput" accept=".json" />
+</div>
+
+<div class="content">
+  <div class="panel panel-left" id="leftPanel">
+    <div class="empty" id="emptyState">
+      <h2>키워드를 입력하고 분석을 시작하세요</h2>
+      <p>상위 블로그 포스트의 구조, 길이, 이미지 사용 패턴을 분석합니다.<br/>
+      또는 저장된 분석 결과를 불러와 확인할 수 있습니다.</p>
+    </div>
+  </div>
+  <div class="panel" id="rightPanel"></div>
+</div>
+
+<script>
+let currentData = null;
+let isAnalyzing = false;
+
+// ─── 분석 실행 (SSE) ───
+function startAnalysis() {
+  const keyword = document.getElementById('keyword').value.trim();
+  if (!keyword) { document.getElementById('keyword').focus(); return; }
+
+  const provider = document.getElementById('provider').value;
+  const top = parseInt(document.getElementById('topN').value, 10) || 5;
+
+  if (isAnalyzing) return;
+  isAnalyzing = true;
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>분석 중...';
+
+  const logPanel = document.getElementById('logPanel');
+  logPanel.innerHTML = '';
+  logPanel.classList.add('visible');
+
+  function addLog(msg, cls = '') {
+    const line = document.createElement('div');
+    line.className = 'log-line' + (cls ? ' ' + cls : '');
+    line.textContent = msg;
+    logPanel.appendChild(line);
+    logPanel.scrollTop = logPanel.scrollHeight;
+  }
+
+  addLog(`분석 요청: "${keyword}" (${provider}, 상위 ${top}개)`);
+
+  fetch('/api/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keyword, provider, top }),
+  }).then((res) => {
+    if (res.status === 409) {
+      addLog('이미 분석이 진행 중입니다. 잠시 후 다시 시도하세요.', 'error');
+      resetBtn();
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    function read() {
+      reader.read().then(({ done, value }) => {
+        if (done) { resetBtn(); return; }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        let eventType = null;
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            eventType = line.substring(7).trim();
+          } else if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.substring(6));
+            if (eventType === 'log') {
+              addLog(data.message);
+            } else if (eventType === 'done') {
+              addLog('분석 완료!', 'done');
+              currentData = data.data;
+              render(currentData);
+              refreshResultList();
+            } else if (eventType === 'error') {
+              addLog('오류: ' + data.message, 'error');
+            }
+            eventType = null;
+          }
+        }
+
+        read();
+      });
+    }
+    read();
+  }).catch((err) => {
+    addLog('서버 연결 실패: ' + err.message, 'error');
+    addLog('서버가 실행 중인지 확인하세요: node server.js', 'error');
+    resetBtn();
+  });
+}
+
+function resetBtn() {
+  isAnalyzing = false;
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = false;
+  btn.textContent = '분석 시작';
+}
+
+// ─── 결과 목록 ───
+function refreshResultList() {
+  fetch('/api/results')
+    .then((r) => r.json())
+    .then(({ files }) => {
+      const sel = document.getElementById('fileSelect');
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">-- 선택 --</option>';
+      files.forEach((f) => {
+        const opt = document.createElement('option');
+        opt.value = f;
+        // 파일명에서 정보 추출
+        const match = f.match(/^(\w+)-(.+)-(\d{4}-\d{2}-\d{2})T/);
+        opt.textContent = match ? `[${match[1]}] ${match[2].replace(/_/g, ' ')} (${match[3]})` : f;
+        sel.appendChild(opt);
+      });
+      if (prev) sel.value = prev;
+    })
+    .catch(() => {}); // 서버 미실행 시 무시
+}
+
+function loadSelected() {
+  const filename = document.getElementById('fileSelect').value;
+  if (!filename) return;
+
+  fetch(`/api/results/${filename}`)
+    .then((r) => r.json())
+    .then((data) => { currentData = data; render(data); })
+    .catch(() => alert('파일 로딩 실패'));
+}
+
+function deleteSelected() {
+  const filename = document.getElementById('fileSelect').value;
+  if (!filename) return;
+  if (!confirm(`"${filename}" 삭제?`)) return;
+
+  fetch(`/api/results/${filename}`, { method: 'DELETE' })
+    .then((r) => r.json())
+    .then(() => {
+      refreshResultList();
+      // 현재 보고 있던 데이터면 초기화
+      if (currentData?.meta) {
+        const ts = new Date(currentData.meta.analyzedAt).toISOString().replace(/[:.]/g, '-').substring(0, 19);
+        if (filename.includes(ts)) {
+          currentData = null;
+          document.getElementById('leftPanel').innerHTML = '<div class="empty" id="emptyState"><h2>삭제됨</h2></div>';
+          document.getElementById('rightPanel').innerHTML = '';
+        }
+      }
+    })
+    .catch(() => alert('삭제 실패'));
+}
+
+// 파일 업로드 핸들러
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      currentData = JSON.parse(ev.target.result);
+      render(currentData);
+    } catch { alert('JSON 파싱 실패'); }
+  };
+  reader.readAsText(file);
+});
+
+// Enter 키 지원
+document.getElementById('keyword').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') startAnalysis();
+});
+
+// ─── 렌더링 ───
+function render(data) {
+  document.getElementById('emptyState')?.remove();
+  renderLeft(data);
+  renderRight(data);
+}
+
+function renderLeft(data) {
+  const panel = document.getElementById('leftPanel');
+  const p = data.patterns;
+  const s = p?.stats;
+
+  let html = '';
+
+  // 메타 정보
+  html += `<div class="card">
+    <h3>분석 개요</h3>
+    <div style="font-size:13px; line-height:1.8;">
+      <div><strong>키워드:</strong> ${data.meta.keyword}</div>
+      <div><strong>플랫폼:</strong> ${data.meta.provider}</div>
+      <div><strong>분석 시각:</strong> ${new Date(data.meta.analyzedAt).toLocaleString('ko-KR')}</div>
+      <div><strong>성공:</strong> ${data.meta.successCount} / ${data.meta.topN}개</div>
+    </div>
+  </div>`;
+
+  if (!s) { panel.innerHTML = html + '<div class="card"><h3>데이터 없음</h3></div>'; return; }
+
+  // 핵심 통계
+  html += `<div class="card">
+    <h3>핵심 통계 (평균)</h3>
+    <div class="stats-grid">
+      <div class="stat-item"><div class="stat-value">${s.avgCharCount.toLocaleString()}</div><div class="stat-label">글자 수</div></div>
+      <div class="stat-item"><div class="stat-value">${s.avgHeadingCount}</div><div class="stat-label">소제목</div></div>
+      <div class="stat-item"><div class="stat-value">${s.avgImageCount}</div><div class="stat-label">이미지</div></div>
+      <div class="stat-item"><div class="stat-value">${s.avgParagraphCount}</div><div class="stat-label">문단 수</div></div>
+      <div class="stat-item"><div class="stat-value">${s.avgBoldCount}</div><div class="stat-label">강조(볼드)</div></div>
+      <div class="stat-item"><div class="stat-value">${s.avgListCount}</div><div class="stat-label">리스트</div></div>
+    </div>
+  </div>`;
+
+  // 문단 길이 분포
+  const dist = p.paragraphLengthDistribution;
+  html += `<div class="card">
+    <h3>문단 길이 분포</h3>
+    <div class="dist-row">
+      <div class="dist-item"><div class="dist-value">${dist.short}</div><div class="dist-label">&lt;50자 (짧은)</div></div>
+      <div class="dist-item"><div class="dist-value">${dist.medium}</div><div class="dist-label">50-150자 (보통)</div></div>
+      <div class="dist-item"><div class="dist-value">${dist.long}</div><div class="dist-label">150-300자 (긴)</div></div>
+      <div class="dist-item"><div class="dist-value">${dist.veryLong}</div><div class="dist-label">300자+ (매우 긴)</div></div>
+    </div>
+    <div style="margin-top:10px; font-size:12px; color:#888;">평균 문단 길이: <strong style="color:#6c5ce7">${p.avgParagraphLength}자</strong></div>
+  </div>`;
+
+  // 포스트별 비교 차트
+  const maxChar = Math.max(...data.posts.filter(p=>p.content).map(p=>p.content.charCount));
+  html += `<div class="card">
+    <h3>포스트별 글자 수</h3>
+    <div class="bar-chart">`;
+  data.posts.forEach((post, i) => {
+    if (!post.content) return;
+    const pct = (post.content.charCount / maxChar * 100).toFixed(0);
+    const colors = ['c1','c2','c3','c4'];
+    html += `<div class="bar-row">
+      <div class="bar-label">#${i+1}</div>
+      <div class="bar-track"><div class="bar-fill ${colors[i % 4]}" style="width:${pct}%">${post.content.charCount.toLocaleString()}</div></div>
+    </div>`;
+  });
+  html += '</div></div>';
+
+  // 소제목 키워드
+  if (p.topHeadingKeywords?.length > 0) {
+    html += `<div class="card"><h3>소제목 빈출 키워드</h3><div class="keyword-cloud">`;
+    p.topHeadingKeywords.forEach((kw) => {
+      html += `<span class="keyword-tag">${kw.word}<span class="count">${kw.count}</span></span>`;
+    });
+    html += '</div></div>';
+  }
+
+  panel.innerHTML = html;
+}
+
+function renderRight(data) {
+  const panel = document.getElementById('rightPanel');
+  let html = '';
+
+  // 구조 패턴
+  const p = data.patterns;
+  if (p?.structurePatterns) {
+    html += `<div class="card"><h3>글 구조 패턴</h3>`;
+    p.structurePatterns.forEach((pattern, i) => {
+      html += `<div style="margin-bottom:10px;"><div style="font-size:12px; color:#888; margin-bottom:4px;">포스트 #${i+1}</div><div class="structure-flow">`;
+      pattern.forEach((tag) => {
+        let cls = 'heading';
+        if (tag.includes('도입')) cls = 'intro';
+        else if (tag.includes('이미지')) cls = 'image';
+        else if (tag.includes('마무리')) cls = 'outro';
+        html += `<span class="flow-tag ${cls}">${tag}</span>`;
+      });
+      html += '</div></div>';
+    });
+    html += '</div>';
+  }
+
+  // 포스트별 비교 테이블
+  html += `<div class="card"><h3>포스트 비교</h3>
+    <table class="compare-table">
+      <tr><th>#</th><th>글자</th><th>소제목</th><th>이미지</th><th>문단</th><th>볼드</th><th>리스트</th><th>링크</th></tr>`;
+  data.posts.forEach((post, i) => {
+    if (!post.content) return;
+    const c = post.content;
+    html += `<tr>
+      <td>${i+1}</td><td>${c.charCount.toLocaleString()}</td><td>${c.headings?.length || 0}</td>
+      <td>${c.imageCount}</td><td>${c.paragraphCount}</td><td>${c.boldCount}</td>
+      <td>${c.listCount}</td><td>${c.linkCount}</td>
+    </tr>`;
+  });
+  html += '</table></div>';
+
+  // 각 포스트 상세
+  html += `<div class="card"><h3>포스트 상세</h3>`;
+  data.posts.forEach((post, i) => {
+    html += `<div class="post-item" onclick="this.classList.toggle('active')">
+      <div class="post-title">${i+1}. ${escHtml(post.title)}</div>
+      <div class="post-meta">`;
+    if (post.content) {
+      html += `<span>${post.content.charCount.toLocaleString()}자</span>
+        <span>H:${post.content.headings?.length || 0}</span>
+        <span>IMG:${post.content.imageCount}</span>
+        <span>P:${post.content.paragraphCount}</span>`;
+    } else {
+      html += '<span style="color:#e17055">추출 실패</span>';
+    }
+    html += `</div>`;
+
+    // 컴포넌트 흐름 시각화
+    if (post.content?.componentFlow?.length > 0) {
+      const flowColors = { heading: '#a29bfe', paragraph: '#74b9ff', image: '#55efc4', sticker: '#ffeaa7', table: '#fab1a0', link_card: '#fd79a8' };
+      html += '<div style="margin-top:10px;"><div style="font-size:11px; color:#666; margin-bottom:4px;">컴포넌트 흐름:</div><div style="display:flex; flex-wrap:wrap; gap:3px;">';
+      post.content.componentFlow.forEach((c) => {
+        const color = flowColors[c.type] || '#ddd';
+        const label = c.type === 'heading' ? 'H' : c.type === 'paragraph' ? 'P' : c.type === 'image' ? 'IMG' : c.type === 'sticker' ? 'S' : c.type === 'table' ? 'TBL' : c.type[0].toUpperCase();
+        const w = c.type === 'paragraph' ? Math.min(40, Math.max(16, (c.length||50)/10)) : 16;
+        html += `<span title="${c.type}${c.text ? ': ' + escHtml(c.text) : ''}" style="display:inline-block; width:${w}px; height:16px; background:${color}; border-radius:2px; font-size:8px; color:#000; text-align:center; line-height:16px; cursor:default;">${label}</span>`;
+      });
+      html += '</div></div>';
+    }
+
+    // 소제목 목록
+    if (post.content?.headings?.length > 0) {
+      html += '<div style="margin-top:10px;">';
+      post.content.headings.forEach((h) => {
+        html += `<div class="heading-item"><span class="tag">${h.tag}</span><span class="text">${escHtml(h.text)}</span></div>`;
+      });
+      html += '</div>';
+    }
+
+    // 미리보기 문단
+    if (post.content?.paragraphs?.length > 0) {
+      html += '<div style="margin-top:10px; font-size:12px; color:#777; line-height:1.6;">';
+      post.content.paragraphs.forEach((p) => {
+        html += `<p style="margin-bottom:6px;">${escHtml(p.substring(0, 150))}${p.length > 150 ? '...' : ''}</p>`;
+      });
+      html += '</div>';
+    }
+
+    html += `<div style="margin-top:6px;"><a href="${post.url}" target="_blank" style="font-size:11px; color:#6c5ce7;">원문 보기 &rarr;</a></div></div>`;
+  });
+  html += '</div>';
+
+  panel.innerHTML = html;
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ─── 패턴 마크다운 내보내기 ───
+function exportMarkdown() {
+  if (!currentData?.patterns) { alert('데이터를 먼저 불러오세요'); return; }
+  const d = currentData;
+  const s = d.patterns.stats;
+
+  let md = `# 블로그 분석 패턴: "${d.meta.keyword}"\n\n`;
+  md += `- 플랫폼: ${d.meta.provider}\n`;
+  md += `- 분석일: ${new Date(d.meta.analyzedAt).toLocaleString('ko-KR')}\n`;
+  md += `- 분석 수: ${s.postCount}개 포스트\n\n`;
+
+  md += `## 권장 글 스펙\n\n`;
+  md += `| 항목 | 권장값 |\n|------|--------|\n`;
+  md += `| 총 글자 수 | ~${Math.round(s.avgCharCount / 100) * 100}자 |\n`;
+  md += `| 소제목 (H2/H3) | ${Math.round(s.avgHeadingCount)}개 |\n`;
+  md += `| 이미지 | ${Math.round(s.avgImageCount)}개 |\n`;
+  md += `| 문단 수 | ${Math.round(s.avgParagraphCount)}개 |\n`;
+  md += `| 평균 문단 길이 | ~${Math.round(d.patterns.avgParagraphLength)}자 |\n`;
+  md += `| 볼드 강조 | ${Math.round(s.avgBoldCount)}회 |\n`;
+  md += `| 리스트 | ${Math.round(s.avgListCount)}개 |\n\n`;
+
+  md += `## 글 구조 패턴\n\n`;
+  d.patterns.structurePatterns.forEach((pattern, i) => {
+    md += `### 포스트 #${i+1}\n`;
+    md += pattern.map(t => `\`${t}\``).join(' → ') + '\n\n';
+  });
+
+  if (d.patterns.topHeadingKeywords?.length > 0) {
+    md += `## 소제목 빈출 키워드\n\n`;
+    d.patterns.topHeadingKeywords.forEach((kw) => {
+      md += `- **${kw.word}** (${kw.count}회)\n`;
+    });
+  }
+
+  md += `\n## 참고 포스트\n\n`;
+  d.posts.forEach((p, i) => {
+    md += `${i+1}. [${p.title}](${p.url})`;
+    if (p.content) md += ` — ${p.content.charCount.toLocaleString()}자`;
+    md += '\n';
+  });
+
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `pattern-${d.meta.keyword.replace(/\s+/g, '_')}.md`;
+  a.click();
+}
+
+// ─── 초기화: 결과 목록 불러오기 ───
+refreshResultList();
+</script>
+</body>
+</html>
