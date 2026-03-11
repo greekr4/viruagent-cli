@@ -36,17 +36,15 @@ npx viruagent-cli login --provider tistory --from-chrome
 npx viruagent-cli login --provider naver --from-chrome
 ```
 
-Run both in parallel. Only if `--from-chrome` fails, fall back to other methods:
+Run both in parallel. If `--from-chrome` fails:
 
-### Tistory fallback
+**DO NOT** attempt headless login or other automated fallbacks. Instead, ask the user:
 
-```bash
-npx viruagent-cli login --provider tistory --username <user> --password <pass> --headless
-```
+> "Chrome 로그인 세션이 만료되었습니다. Chrome 브라우저에서 해당 서비스(티스토리/네이버)에 로그인한 후 다시 시도해주세요."
 
-If 2FA is required (response contains `pending_2fa`), ask the user to approve the login on their mobile device (Kakao app notification), then retry the status check.
+Then wait for the user to confirm they've logged in, and retry `--from-chrome`.
 
-### Naver fallback
+### Naver fallback (legacy, not recommended)
 
 ```bash
 # Manual login via browser
