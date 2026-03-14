@@ -67,31 +67,19 @@ Tell the user that viruagent-cli installation is complete.
 ### Tistory
 
 ```bash
-# Chrome 세션 임포트 (ID/PW 불필요, macOS & Windows)
-npx viruagent-cli login --from-chrome
-
-# 특정 Chrome 프로필 사용
-npx viruagent-cli login --from-chrome --profile "Profile 2"
-
-# 기존 카카오 로그인 (ID/PW 필요)
+# 카카오 로그인 (ID/PW 필요)
 npx viruagent-cli login --username <id> --password <pw> --headless
 ```
 
 ### Naver Blog
 
 ```bash
-# Chrome 세션 임포트 (권장)
-npx viruagent-cli login --provider naver --from-chrome
-
 # 수동 로그인 (브라우저에서 직접 로그인)
 npx viruagent-cli login --provider naver --manual
 
 # 자동 로그인 (ID/PW)
 npx viruagent-cli login --provider naver --username <id> --password <pw>
 ```
-
-> [!TIP]
-> `--from-chrome`은 Chrome에서 직접 쿠키를 추출합니다 — macOS Keychain 또는 Windows DPAPI를 사용하며, CDP 폴백도 지원합니다. 브라우저 실행 없이, 2FA 없이, 1초 내 완료됩니다.
 
 ## 사용법
 

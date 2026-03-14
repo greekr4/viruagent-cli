@@ -48,7 +48,7 @@ const checkLoginResult = async (page) => {
   // 캡차 감지
   const hasCaptcha = patterns.captcha.some((p) => content.toLowerCase().includes(p.toLowerCase()));
   if (hasCaptcha) {
-    return { success: false, error: 'captcha', message: '캡차가 감지되었습니다. --manual 또는 --from-chrome 모드를 사용해 주세요.' };
+    return { success: false, error: 'captcha', message: '캡차가 감지되었습니다. --manual 모드를 사용해 주세요.' };
   }
 
   // 성공 (운영원칙 위반 포함)

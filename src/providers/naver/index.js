@@ -8,7 +8,6 @@ const {
 const { convertHtmlToEditorComponents } = require('./editorConvert');
 const { collectAndUploadImages } = require('./imageUpload');
 const { createNaverWithProviderSession } = require('./session');
-const { importSessionFromChrome } = require('./chromeImport');
 const { createAskForAuthentication } = require('./auth');
 
 const createNaverProvider = ({ sessionPath }) => {
@@ -54,25 +53,7 @@ const createNaverProvider = ({ sessionPath }) => {
       manual = false,
       username,
       password,
-      fromChrome,
-      profile,
     } = {}) {
-      if (fromChrome) {
-        await importSessionFromChrome(sessionPath, profile || 'Default');
-        naverApi.resetState();
-        const blogId = await naverApi.initBlog();
-        const result = {
-          provider: 'naver',
-          loggedIn: true,
-          blogId,
-          blogUrl: `https://blog.naver.com/${blogId}`,
-          sessionPath,
-          source: 'chrome-import',
-        };
-        saveProviderMeta('naver', { loggedIn: true, blogId, blogUrl: result.blogUrl, sessionPath });
-        return result;
-      }
-
       const creds = readNaverCredentials();
       const resolved = {
         headless,

@@ -26,25 +26,29 @@ npx viruagent-cli --spec
 
 All responses are JSON: `{ "ok": true, "data": {...} }` on success, `{ "ok": false, "error": "...", "message": "...", "hint": "..." }` on failure.
 
-## Step 2: Authenticate (ALWAYS run --from-chrome first)
+## Step 2: Check authentication
 
-**IMPORTANT**: Always run `--from-chrome` login for ALL providers before doing anything else. This refreshes the session from the user's Chrome browser cookies and is the fastest, most reliable method.
+### Tistory
 
 ```bash
-# ALWAYS run these first, regardless of current status
-npx viruagent-cli login --provider tistory --from-chrome
-npx viruagent-cli login --provider naver --from-chrome
+npx viruagent-cli status --provider tistory
 ```
 
-Run both in parallel. If `--from-chrome` fails:
+If not logged in, authenticate:
 
-**DO NOT** attempt headless login or other automated fallbacks. Instead, ask the user:
+```bash
+npx viruagent-cli login --provider tistory --username <user> --password <pass> --headless
+```
 
-> "Chrome 로그인 세션이 만료되었습니다. Chrome 브라우저에서 해당 서비스(티스토리/네이버)에 로그인한 후 다시 시도해주세요."
+If 2FA is required (response contains `pending_2fa`), ask the user to approve the login on their mobile device (Kakao app notification), then retry the status check.
 
-Then wait for the user to confirm they've logged in, and retry `--from-chrome`.
+### Naver Blog
 
-### Naver fallback (legacy, not recommended)
+```bash
+npx viruagent-cli status --provider naver
+```
+
+If not logged in, authenticate:
 
 ```bash
 # Manual login via browser

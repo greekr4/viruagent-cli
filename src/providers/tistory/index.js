@@ -13,7 +13,6 @@ const {
 const { normalizeThumbnailForPublish } = require('./imageNormalization');
 const { enrichContentWithUploadedImages, resolveMandatoryThumbnail } = require('./imageEnrichment');
 const { createWithProviderSession } = require('./session');
-const { importSessionFromChrome } = require('./chromeImport');
 const { createAskForAuthentication } = require('./auth');
 
 const createTistoryProvider = ({ sessionPath }) => {
@@ -70,25 +69,7 @@ const createTistoryProvider = ({ sessionPath }) => {
       username,
       password,
       twoFactorCode,
-      fromChrome,
-      profile,
     } = {}) {
-      if (fromChrome) {
-        await importSessionFromChrome(sessionPath, profile || 'Default');
-        tistoryApi.resetState();
-        const blogName = await tistoryApi.initBlog();
-        const result = {
-          provider: 'tistory',
-          loggedIn: true,
-          blogName,
-          blogUrl: `https://${blogName}.tistory.com`,
-          sessionPath,
-          source: 'chrome-import',
-        };
-        saveProviderMeta('tistory', { loggedIn: true, blogName, blogUrl: result.blogUrl, sessionPath });
-        return result;
-      }
-
       const creds = readCredentialsFromEnv();
       const resolved = {
         headless,

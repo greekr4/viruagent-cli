@@ -67,31 +67,19 @@ Tell the user that viruagent-cli installation is complete.
 ### Tistory
 
 ```bash
-# Import session from Chrome (no ID/PW needed, macOS & Windows)
-npx viruagent-cli login --from-chrome
-
-# Use a specific Chrome profile
-npx viruagent-cli login --from-chrome --profile "Profile 2"
-
-# Traditional Kakao login (ID/PW required)
+# Kakao login (ID/PW required)
 npx viruagent-cli login --username <id> --password <pw> --headless
 ```
 
 ### Naver Blog
 
 ```bash
-# Import session from Chrome (recommended)
-npx viruagent-cli login --provider naver --from-chrome
-
 # Manual login via browser
 npx viruagent-cli login --provider naver --manual
 
 # Auto login with credentials
 npx viruagent-cli login --provider naver --username <id> --password <pw>
 ```
-
-> [!TIP]
-> `--from-chrome` extracts cookies from Chrome directly — via macOS Keychain or Windows DPAPI, with CDP fallback. No browser launch, no 2FA — completes in under 1 second.
 
 ## Usage
 

@@ -97,8 +97,6 @@ const runCommand = async (command, opts = {}) => {
           username: opts.username || undefined,
           password: opts.password || undefined,
           twoFactorCode: opts.twoFactorCode || undefined,
-          fromChrome: Boolean(opts.fromChrome),
-          profile: opts.profile || undefined,
         })
       )();
 
