@@ -271,6 +271,16 @@ const createInstaProvider = ({ sessionPath }) => {
       });
     },
 
+    async resolveChallenge() {
+      const resolved = await instaApi.resolveChallenge();
+      return {
+        provider: 'insta',
+        mode: 'resolveChallenge',
+        resolved,
+        message: resolved ? 'Challenge 해결 완료' : 'Challenge 해결 실패. 브라우저에서 수동으로 처리해 주세요.',
+      };
+    },
+
     rateLimitStatus() {
       return {
         provider: 'insta',

@@ -174,7 +174,34 @@ const createInstaApiClient = ({ sessionPath }) => {
       if (location.includes('/accounts/login')) {
         throw new Error('세션이 만료되었습니다. 다시 로그인해 주세요.');
       }
+      if (location.includes('/challenge')) {
+        // challenge 자동 해결 시도
+        const resolved = await resolveChallenge();
+        if (resolved) {
+          // 해결 후 원래 요청 재시도
+          return fetch(url, { ...options, headers, redirect: 'manual' });
+        }
+        throw new Error('challenge_required: 본인 인증이 필요합니다. 브라우저에서 수동으로 처리해 주세요.');
+      }
       throw new Error(`리다이렉트 발생: ${res.status} → ${location}`);
+    }
+
+    // challenge_required JSON 응답 처리
+    if (res.status === 400 && !options.allowError) {
+      const cloned = res.clone();
+      try {
+        const data = await cloned.json();
+        if (data.message === 'challenge_required') {
+          const resolved = await resolveChallenge();
+          if (resolved) {
+            return fetch(url, { ...options, headers, redirect: 'manual' });
+          }
+          throw new Error('challenge_required: 본인 인증이 필요합니다.');
+        }
+      } catch (e) {
+        if (e.message.includes('challenge_required')) throw e;
+        // JSON 파싱 실패는 무시하고 원래 흐름
+      }
     }
 
     if (res.status === 401 || res.status === 403) {
@@ -314,6 +341,35 @@ const createInstaApiClient = ({ sessionPath }) => {
       videoUrl: media.video_url || null,
       mediaType: media.__typename,
     };
+  };
+
+  // ── Challenge 자동 해결 ──
+
+  const resolveChallenge = async () => {
+    try {
+      const cookies = getCookies();
+      const res = await fetch('https://www.instagram.com/api/v1/challenge/web/action/', {
+        method: 'POST',
+        headers: {
+          'User-Agent': USER_AGENT,
+          'X-IG-App-ID': IG_APP_ID,
+          'X-CSRFToken': getCsrfToken(),
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-Instagram-AJAX': '1',
+          Referer: 'https://www.instagram.com/challenge/',
+          Origin: 'https://www.instagram.com',
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Cookie: cookiesToHeader(cookies),
+        },
+        body: 'choice=0',
+        redirect: 'manual',
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      return data.status === 'ok';
+    } catch {
+      return false;
+    }
   };
 
   const parseLikeResponse = async (res) => {
@@ -611,6 +667,7 @@ const createInstaApiClient = ({ sessionPath }) => {
     configurePost,
     publishPost,
     deletePost,
+    resolveChallenge,
     resetState,
     getRateLimitStatus: () => {
       const status = {};

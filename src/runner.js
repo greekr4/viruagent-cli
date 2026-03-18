@@ -237,6 +237,9 @@ const runCommand = async (command, opts = {}) => {
       }
       return withProvider(() => provider.analyzePost({ postId: opts.postId }))();
 
+    case 'resolve-challenge':
+      return withProvider(() => provider.resolveChallenge())();
+
     case 'rate-limit-status':
       return withProvider(() => Promise.resolve(provider.rateLimitStatus()))();
 

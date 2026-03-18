@@ -99,10 +99,61 @@ const createAskForAuthentication = ({ sessionPath }) => async ({
 
   const loginData = await loginRes.json();
 
-  if (loginData.checkpoint_url) {
-    throw new Error(
-      '2단계 인증(checkpoint)이 필요합니다. 브라우저에서 먼저 인증을 완료해 주세요.',
-    );
+  if (loginData.checkpoint_url || loginData.message === 'challenge_required') {
+    // challenge 자동 해결 시도 (choice=0 = 본인입니다)
+    const challengeRes = await fetch('https://www.instagram.com/api/v1/challenge/web/action/', {
+      method: 'POST',
+      headers: {
+        'User-Agent': USER_AGENT,
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-Instagram-AJAX': '1',
+        'X-IG-App-ID': IG_APP_ID,
+        Referer: 'https://www.instagram.com/challenge/',
+        Origin: 'https://www.instagram.com',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Cookie: cookieHeader,
+      },
+      body: 'choice=0',
+      redirect: 'manual',
+    });
+    const challengeData = await challengeRes.json().catch(() => ({}));
+    if (challengeData.status !== 'ok') {
+      throw new Error(
+        'challenge_required: 자동 해결 실패. 브라우저에서 본인 인증을 완료해 주세요. ' +
+        (loginData.checkpoint_url || ''),
+      );
+    }
+    // challenge 해결 후 재로그인
+    const retryRes = await fetch('https://www.instagram.com/api/v1/web/accounts/login/ajax/', {
+      method: 'POST',
+      headers: {
+        'User-Agent': USER_AGENT,
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-IG-App-ID': IG_APP_ID,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Referer: 'https://www.instagram.com/accounts/login/',
+        Origin: 'https://www.instagram.com',
+        Cookie: cookieHeader,
+      },
+      body: body.toString(),
+      redirect: 'manual',
+    });
+    const retryCookies = parseCookiesFromHeaders(retryRes.headers);
+    cookies = mergeCookies(cookies, retryCookies);
+    const retryData = await retryRes.json().catch(() => ({}));
+    if (retryData.authenticated) {
+      saveInstaSession(sessionPath, cookies);
+      return {
+        provider: 'insta',
+        loggedIn: true,
+        userId: retryData.userId || null,
+        username: resolvedUsername,
+        sessionPath,
+        challengeResolved: true,
+      };
+    }
   }
 
   if (loginData.two_factor_required) {

@@ -212,6 +212,12 @@ analyzePostCmd
   .option('--post-id <shortcode>', 'Post shortcode')
   .action((opts) => execute('analyze-post', opts));
 
+const resolveChallengeCmd = program
+  .command('resolve-challenge')
+  .description('Resolve Instagram challenge (auto-verify identity)');
+addProviderOption(resolveChallengeCmd);
+resolveChallengeCmd.action((opts) => execute('resolve-challenge', opts));
+
 const rateLimitCmd = program
   .command('rate-limit-status')
   .description('Show current rate limit usage');
