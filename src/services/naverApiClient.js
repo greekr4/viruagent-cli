@@ -29,19 +29,19 @@ const normalizeCookies = (session) => {
 const readSessionCookies = (sessionPath) => {
   const resolvedPath = path.resolve(sessionPath);
   if (!fs.existsSync(resolvedPath)) {
-    throw new Error(`세션 파일이 없습니다. ${resolvedPath}에 로그인 정보를 먼저 저장하세요.`);
+    throw new Error(`Session file not found. Please save login credentials to ${resolvedPath} first.`);
   }
 
   let raw;
   try {
     raw = JSON.parse(fs.readFileSync(resolvedPath, 'utf-8'));
   } catch (error) {
-    throw new Error(`세션 파일 파싱 실패: ${error.message}`);
+    throw new Error(`Failed to parse session file: ${error.message}`);
   }
 
   const cookies = normalizeCookies(raw);
   if (!cookies.length) {
-    throw new Error('세션에 유효한 쿠키가 없습니다. 다시 로그인해 주세요.');
+    throw new Error('No valid cookies found in session. Please log in again.');
   }
 
   return cookies.join('; ');
@@ -88,7 +88,7 @@ const createNaverApiClient = ({ sessionPath }) => {
           detail = await response.text();
           detail = detail ? `: ${detail.slice(0, 200)}` : '';
         } catch {}
-        throw new Error(`요청 실패: ${response.status} ${response.statusText}${detail}`);
+        throw new Error(`Request failed: ${response.status} ${response.statusText}${detail}`);
       }
       return response.json();
     } finally {
@@ -105,7 +105,7 @@ const createNaverApiClient = ({ sessionPath }) => {
         ...options,
       });
       if (!response.ok) {
-        throw new Error(`요청 실패: ${response.status} ${response.statusText}`);
+        throw new Error(`Request failed: ${response.status} ${response.statusText}`);
       }
       return response.text();
     } finally {
@@ -122,11 +122,11 @@ const createNaverApiClient = ({ sessionPath }) => {
 
     const match = html.match(/blogId\s*=\s*'([^']+)'/);
     if (!match) {
-      // JSON 응답인 경우도 체크
+      // Also check if response is a login page
       if (html.includes('로그인') || html.includes('login')) {
-        throw new Error('세션이 만료되었습니다. 다시 로그인해 주세요.');
+        throw new Error('Session expired. Please log in again.');
       }
-      throw new Error('MyBlog 응답에서 blogId를 찾을 수 없습니다.');
+      throw new Error('Could not find blogId in MyBlog response.');
     }
 
     blogId = match[1];
@@ -144,7 +144,7 @@ const createNaverApiClient = ({ sessionPath }) => {
       }
     );
     const token = json?.result?.token;
-    if (!token) throw new Error('Se-Authorization 토큰을 가져올 수 없습니다.');
+    if (!token) throw new Error('Failed to retrieve Se-Authorization token.');
     return token;
   };
 
@@ -185,7 +185,7 @@ const createNaverApiClient = ({ sessionPath }) => {
       }
     );
     const editorId = configJson?.editorInfo?.id;
-    if (!editorId) throw new Error('에디터 ID를 가져올 수 없습니다.');
+    if (!editorId) throw new Error('Failed to retrieve editor ID.');
 
     const managerJson = await requestJson(
       `${BLOG_HOST}/PostWriteFormManagerOptions.naver?blogId=${encodeURIComponent(id)}&categoryNo=${encodeURIComponent(categoryNo)}`,
@@ -216,7 +216,7 @@ const createNaverApiClient = ({ sessionPath }) => {
   const uploadImage = async (imageBuffer, filename, token) => {
     const id = blogId || await initBlog();
     const sessionKey = await getUploadSessionKey(token);
-    if (!sessionKey) throw new Error('이미지 업로드 세션 키를 가져올 수 없습니다.');
+    if (!sessionKey) throw new Error('Failed to retrieve image upload session key.');
 
     const uploadUrl = `https://blog.upphoto.naver.com/${sessionKey}/simpleUpload/0?userId=${encodeURIComponent(id)}&extractExif=true&extractAnimatedCnt=true&autorotate=true&extractDominantColor=false&denyAnimatedImage=false&skipXcamFiltering=false`;
 
@@ -238,12 +238,12 @@ const createNaverApiClient = ({ sessionPath }) => {
       });
 
       if (!response.ok) {
-        throw new Error(`이미지 업로드 실패: ${response.status}`);
+        throw new Error(`Image upload failed: ${response.status}`);
       }
 
       const xml = await response.text();
       if (!xml.includes('<url>')) {
-        throw new Error('이미지 업로드 응답에 URL이 없습니다.');
+        throw new Error('Image upload response does not contain a URL.');
       }
 
       const extractTag = (tag) => {
@@ -309,7 +309,7 @@ const createNaverApiClient = ({ sessionPath }) => {
       : await getDefaultCategoryNo();
     const { editorId, editorSource, token } = await getEditorInfo(resolvedCategoryNo);
 
-    // content가 이미 컴포넌트 배열이면 그대로 사용, 아니면 빈 배열
+    // Use content as-is if already a component array, otherwise empty array
     const contentComponents = Array.isArray(content) ? content : [];
 
     const titleComponent = {
@@ -396,12 +396,12 @@ const createNaverApiClient = ({ sessionPath }) => {
       });
 
       if (!response.ok) {
-        throw new Error(`글 발행 실패: ${response.status}`);
+        throw new Error(`Post publish failed: ${response.status}`);
       }
 
       const json = await response.json();
       if (!json.isSuccess) {
-        throw new Error(`글 발행 실패: ${JSON.stringify(json).slice(0, 200)}`);
+        throw new Error(`Post publish failed: ${JSON.stringify(json).slice(0, 200)}`);
       }
 
       const redirectUrl = json.result?.redirectUrl || '';
@@ -432,7 +432,7 @@ const createNaverApiClient = ({ sessionPath }) => {
 
     let json;
     try {
-      // 네이버 응답에 잘못된 이스케이프(\')가 포함될 수 있어 정리
+      // Naver response may contain invalid escape sequences (\'), so sanitize
       const sanitized = text.replace(/\\'/g, "'");
       json = JSON.parse(sanitized);
     } catch {

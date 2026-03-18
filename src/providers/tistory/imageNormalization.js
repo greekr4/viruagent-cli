@@ -21,7 +21,7 @@ const normalizeKageFromUrl = (value) => {
       }
     }
   } catch {
-    // URL 파싱이 실패하면 기존 정규식 경로로 폴백
+    // If URL parsing fails, fall back to regex-based path extraction
   }
 
   const directKageMatch = trimmed.match(/kage@([^|\s\]>"']+)/u);

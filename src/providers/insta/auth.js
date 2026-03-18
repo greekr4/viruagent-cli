@@ -50,12 +50,12 @@ const createAskForAuthentication = ({ sessionPath }) => async ({
 
   if (!resolvedUsername || !resolvedPassword) {
     throw new Error(
-      '인스타그램 로그인에 username/password가 필요합니다. ' +
-      '환경변수 INSTA_USERNAME / INSTA_PASSWORD를 설정해 주세요.',
+      'Instagram login requires username/password. ' +
+      'Please set the INSTA_USERNAME / INSTA_PASSWORD environment variables.',
     );
   }
 
-  // Step 1: GET login page -> csrftoken + mid 쿠키 획득
+  // Step 1: GET login page -> obtain csrftoken + mid cookies
   const initRes = await fetch('https://www.instagram.com/accounts/login/', {
     headers: { 'User-Agent': USER_AGENT },
     redirect: 'manual',
@@ -64,7 +64,7 @@ const createAskForAuthentication = ({ sessionPath }) => async ({
 
   const csrfCookie = cookies.find((c) => c.name === 'csrftoken');
   if (!csrfCookie) {
-    throw new Error('Instagram 초기 페이지에서 csrftoken을 가져올 수 없습니다.');
+    throw new Error('Failed to retrieve csrftoken from the Instagram login page.');
   }
   const csrfToken = csrfCookie.value;
   const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join('; ');
@@ -100,7 +100,7 @@ const createAskForAuthentication = ({ sessionPath }) => async ({
   const loginData = await loginRes.json();
 
   if (loginData.checkpoint_url || loginData.message === 'challenge_required') {
-    // challenge 자동 해결 시도 (choice=0 = 본인입니다)
+    // Attempt automatic challenge resolution (choice=0 = "This was me")
     const challengeRes = await fetch('https://www.instagram.com/api/v1/challenge/web/action/', {
       method: 'POST',
       headers: {
@@ -120,11 +120,11 @@ const createAskForAuthentication = ({ sessionPath }) => async ({
     const challengeData = await challengeRes.json().catch(() => ({}));
     if (challengeData.status !== 'ok') {
       throw new Error(
-        'challenge_required: 자동 해결 실패. 브라우저에서 본인 인증을 완료해 주세요. ' +
+        'challenge_required: Automatic resolution failed. Please complete identity verification in the browser. ' +
         (loginData.checkpoint_url || ''),
       );
     }
-    // challenge 해결 후 재로그인
+    // Re-login after challenge resolution
     const retryRes = await fetch('https://www.instagram.com/api/v1/web/accounts/login/ajax/', {
       method: 'POST',
       headers: {
@@ -158,16 +158,16 @@ const createAskForAuthentication = ({ sessionPath }) => async ({
 
   if (loginData.two_factor_required) {
     throw new Error(
-      '2단계 인증(2FA)이 필요합니다. 브라우저에서 먼저 인증을 완료해 주세요.',
+      'Two-factor authentication (2FA) is required. Please complete verification in the browser first.',
     );
   }
 
   if (!loginData.authenticated) {
     const reason = loginData.message || loginData.status || 'unknown';
-    throw new Error(`인스타그램 로그인 실패: ${reason}`);
+    throw new Error(`Instagram login failed: ${reason}`);
   }
 
-  // 세션 저장
+  // Save session
   saveInstaSession(sessionPath, cookies);
 
   return {

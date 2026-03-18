@@ -57,8 +57,8 @@ const persistTistorySession = async (context, targetSessionPath) => {
 };
 
 /**
- * withProviderSession 팩토리.
- * askForAuthentication을 외부에서 주입받아 스코프 버그를 해결한다.
+ * withProviderSession factory.
+ * Receives askForAuthentication via dependency injection to avoid scope issues.
  */
 const createWithProviderSession = (askForAuthentication) => async (fn) => {
   const credentials = readCredentialsFromEnv();
@@ -94,7 +94,7 @@ const createWithProviderSession = (askForAuthentication) => async (fn) => {
       });
 
       if (!loginResult.loggedIn) {
-        throw new Error(loginResult.message || '세션 갱신 후 로그인 상태가 확인되지 않았습니다.');
+        throw new Error(loginResult.message || 'Login status could not be confirmed after session refresh.');
       }
 
       return fn();

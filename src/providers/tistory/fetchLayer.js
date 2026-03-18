@@ -2,7 +2,7 @@ const { sleep, imageTrace } = require('./utils');
 
 const fetchText = async (url, retryCount = 0) => {
   if (!url) {
-    throw new Error('텍스트 URL이 없습니다.');
+    throw new Error('Text URL is missing.');
   }
 
   const headers = {
@@ -22,7 +22,7 @@ const fetchText = async (url, retryCount = 0) => {
     });
 
     if (!response.ok) {
-      throw new Error(`텍스트 요청 실패: ${response.status} ${response.statusText}, url=${url}`);
+      throw new Error(`Text request failed: ${response.status} ${response.statusText}, url=${url}`);
     }
 
     return response.text();
@@ -31,7 +31,7 @@ const fetchText = async (url, retryCount = 0) => {
       await sleep(700);
       return fetchText(url, retryCount + 1);
     }
-    throw new Error(`웹 텍스트 다운로드 실패: ${error.message}`);
+    throw new Error(`Web text download failed: ${error.message}`);
   } finally {
     clearTimeout(timeout);
   }
@@ -52,7 +52,7 @@ const fetchTextWithHeaders = async (url, headers = {}, retryCount = 0) => {
       signal: controller.signal,
     });
     if (!response.ok) {
-      throw new Error(`텍스트 요청 실패: ${response.status} ${response.statusText}, url=${url}`);
+      throw new Error(`Text request failed: ${response.status} ${response.statusText}, url=${url}`);
     }
     return response.text();
   } catch (error) {
@@ -60,7 +60,7 @@ const fetchTextWithHeaders = async (url, headers = {}, retryCount = 0) => {
       await sleep(700);
       return fetchTextWithHeaders(url, headers, retryCount + 1);
     }
-    throw new Error(`웹 텍스트 다운로드 실패: ${error.message}`);
+    throw new Error(`Web text download failed: ${error.message}`);
   } finally {
     clearTimeout(timeout);
   }

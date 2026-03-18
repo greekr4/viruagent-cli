@@ -18,8 +18,8 @@ const {
 } = require('./selectors');
 
 /**
- * askForAuthentication 팩토리.
- * sessionPath, tistoryApi, pending2faResult를 외부에서 주입받는다.
+ * askForAuthentication factory.
+ * Receives sessionPath, tistoryApi, and pending2faResult via dependency injection.
  */
 const createAskForAuthentication = ({ sessionPath, tistoryApi, pending2faResult }) => async ({
   headless = false,
@@ -35,7 +35,7 @@ const createAskForAuthentication = ({ sessionPath, tistoryApi, pending2faResult 
   const shouldAutoFill = !manual;
 
   if (!manual && (!resolvedUsername || !resolvedPassword)) {
-    throw new Error('티스토리 로그인 요청에 id/pw가 없습니다. id/pw를 먼저 전달하거나 TISTORY_USERNAME/TISTORY_PASSWORD를 설정해 주세요.');
+    throw new Error('Tistory login requires id/pw. Please provide id/pw or set TISTORY_USERNAME/TISTORY_PASSWORD environment variables.');
   }
 
   const browser = await chromium.launch({
@@ -55,7 +55,7 @@ const createAskForAuthentication = ({ sessionPath, tistoryApi, pending2faResult 
 
       const kakaoLoginSelector = await pickValue(page, KAKAO_TRIGGER_SELECTORS);
       if (!kakaoLoginSelector) {
-        throw new Error('카카오 로그인 버튼을 찾지 못했습니다. 로그인 화면 UI가 변경되었는지 확인해 주세요.');
+        throw new Error('Could not find the Kakao login button. Please check if the login page UI has changed.');
       }
 
       await page.locator(kakaoLoginSelector).click({ timeout: 5000 }).catch(() => {});
@@ -68,16 +68,16 @@ const createAskForAuthentication = ({ sessionPath, tistoryApi, pending2faResult 
       if (manual) {
         console.log('');
         console.log('==============================');
-        console.log('수동 로그인 모드로 전환합니다.');
-        console.log('브라우저에서 직접 ID/PW/2차 인증을 완료한 뒤, 로그인 완료 상태를 기다립니다.');
-        console.log('로그인 완료 또는 2차 인증은 최대 5분 내에 처리해 주세요.');
+        console.log('Switching to manual login mode.');
+        console.log('Please complete ID/PW/2FA verification in the browser.');
+        console.log('Login or 2FA must be completed within 5 minutes.');
         console.log('==============================');
         finalLoginStatus = await waitForLoginFinish(page, context, 300000);
       } else if (shouldAutoFill) {
         const usernameFilled = await fillBySelector(page, KAKAO_LOGIN_SELECTORS.username, loginId);
         const passwordFilled = await fillBySelector(page, KAKAO_LOGIN_SELECTORS.password, loginPw);
         if (!usernameFilled || !passwordFilled) {
-          throw new Error('카카오 로그인 폼 입력 필드를 찾지 못했습니다. 티스토리 로그인 화면 변경 시도를 확인해 주세요.');
+          throw new Error('Could not find Kakao login form input fields. Please check if the Tistory login page has changed.');
         }
 
         await checkBySelector(page, KAKAO_LOGIN_SELECTORS.rememberLogin);
@@ -94,7 +94,7 @@ const createAskForAuthentication = ({ sessionPath, tistoryApi, pending2faResult 
           }
           const otpFilled = await fillBySelector(page, LOGIN_OTP_SELECTORS, twoFactorCode);
           if (!otpFilled) {
-            throw new Error('OTP 입력 필드를 찾지 못했습니다. 로그인 페이지를 확인해 주세요.');
+            throw new Error('Could not find the OTP input field. Please check the login page.');
           }
           await page.keyboard.press('Enter');
           finalLoginStatus = await waitForLoginFinish(page, context, 45000);
@@ -106,7 +106,7 @@ const createAskForAuthentication = ({ sessionPath, tistoryApi, pending2faResult 
           if (hasEmailCodeInput && twoFactorCode) {
             const codeFilled = await fillBySelector(page, KAKAO_2FA_SELECTORS.codeInput, twoFactorCode);
             if (!codeFilled) {
-              throw new Error('2차 인증 입력 필드를 찾지 못했습니다. 로그인 페이지를 확인해 주세요.');
+              throw new Error('Could not find the 2FA input field. Please check the login page.');
             }
             const confirmed = await clickSubmit(page, KAKAO_2FA_SELECTORS.confirm);
             if (!confirmed) {
@@ -122,7 +122,7 @@ const createAskForAuthentication = ({ sessionPath, tistoryApi, pending2faResult 
 
             const codeFilled = await fillBySelector(page, KAKAO_2FA_SELECTORS.codeInput, twoFactorCode);
             if (!codeFilled) {
-              throw new Error('카카오 이메일 인증 입력 필드를 찾지 못했습니다. 로그인 페이지를 확인해 주세요.');
+              throw new Error('Could not find the Kakao email verification input field. Please check the login page.');
             }
 
             const confirmed = await clickSubmit(page, KAKAO_2FA_SELECTORS.confirm);
@@ -140,7 +140,7 @@ const createAskForAuthentication = ({ sessionPath, tistoryApi, pending2faResult 
         if (pendingTwoFactorAction) {
           return pending2faResult('kakao');
         }
-        throw new Error('로그인에 실패했습니다. 아이디/비밀번호가 정확한지 확인하고, 없으면 환경변수 TISTORY_USERNAME/TISTORY_PASSWORD를 다시 설정해 주세요.');
+        throw new Error('Login failed. Please verify your credentials and ensure TISTORY_USERNAME/TISTORY_PASSWORD environment variables are set correctly.');
       }
 
       await context.storageState({ path: sessionPath });

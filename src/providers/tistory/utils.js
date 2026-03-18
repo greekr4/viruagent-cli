@@ -11,10 +11,10 @@ const imageTrace = (message, data) => {
     return;
   }
   if (data === undefined) {
-    console.log(`[이미지 추적] ${message}`);
+    console.log(`[Image Trace] ${message}`);
     return;
   }
-  console.log(`[이미지 추적] ${message}`, data);
+  console.log(`[Image Trace] ${message}`, data);
 };
 
 const MAX_IMAGE_UPLOAD_COUNT = 1;
@@ -57,17 +57,17 @@ const normalizeTagList = (value = '') => {
 const parseSessionError = (error) => {
   const message = String(error?.message || '').toLowerCase();
   return [
-    '세션이 만료',
-    '세션에 유효한 쿠키',
-    '세션 파일이 없습니다',
-    '블로그 정보 조회 실패: 401',
-    '블로그 정보 조회 실패: 403',
-    '세션이 만료되었습니다',
-    '다시 로그인',
+    'session expired',
+    'valid cookie in session',
+    'session file not found',
+    'blog info fetch failed: 401',
+    'blog info fetch failed: 403',
+    'session has expired',
+    'please log in again',
   ].some((token) => message.includes(token.toLowerCase()));
 };
 
-const buildLoginErrorMessage = (error) => String(error?.message || '세션 검증에 실패했습니다.');
+const buildLoginErrorMessage = (error) => String(error?.message || 'Session validation failed.');
 
 const promptCategorySelection = async (categories = []) => {
   if (!process.stdin || !process.stdin.isTTY) {
@@ -79,9 +79,9 @@ const promptCategorySelection = async (categories = []) => {
 
   const candidates = categories.map((category, index) => `${index + 1}. ${category.name} (${category.id})`);
   const lines = [
-    '발행할 카테고리를 선택해 주세요.',
+    'Please select a category for publishing.',
     ...candidates,
-    `입력: 번호(1-${categories.length}) 또는 카테고리 ID (엔터 입력 시 건너뛰기)`,
+    `Enter: number (1-${categories.length}) or category ID (press Enter to skip)`,
   ];
   const prompt = `${lines.join('\n')}\n> `;
 
@@ -126,7 +126,7 @@ const promptCategorySelection = async (categories = []) => {
           return;
         }
 
-        console.log('잘못된 입력입니다. 번호 또는 카테고리 ID를 다시 입력해 주세요.');
+        console.log('Invalid input. Please enter a number or category ID again.');
         ask(retryCount + 1);
       });
     };
@@ -137,7 +137,7 @@ const promptCategorySelection = async (categories = []) => {
 
 const isPublishLimitError = (error) => {
   const message = String(error?.message || '');
-  return /발행 실패:\s*403/.test(message) || /\b403\b/.test(message);
+  return /publish failed:\s*403/i.test(message) || /\b403\b/.test(message);
 };
 
 const isProvidedCategory = (value) => {

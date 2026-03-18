@@ -8,40 +8,40 @@ const randomDelay = (minSec, maxSec) => {
 };
 
 // ──────────────────────────────────────────────────────────────
-// Instagram 안전 액션 규칙 (2026 기준, 리서치 기반)
+// Instagram Safe Action Rules (2026, research-based)
 //
-// [계정 나이별 시간당 한도]
-//   신규 (0~20일)    | 성숙 (20일+)
-//   좋아요    15/h   | 60/h
-//   댓글       5/h   | 20/h
-//   팔로우    15/h   | 60/h
-//   언팔로우  10/h   | 30/h
+// [Hourly limits by account age]
+//   New (0~20 days)  | Mature (20+ days)
+//   Like      15/h   | 60/h
+//   Comment    5/h   | 20/h
+//   Follow    15/h   | 60/h
+//   Unfollow  10/h   | 30/h
 //   DM         5/h   | 50/h
-//   게시물     3/h   | 10/h
+//   Publish    3/h   | 10/h
 //
-// [일일 한도]
-//   좋아요   500/일   댓글   100/일   팔로우  250/일
-//   언팔로우 200/일   DM      30/일   게시물   25/일
+// [Daily limits]
+//   Like   500/day   Comment 100/day   Follow  250/day
+//   Unfollow 200/day DM       30/day   Publish  25/day
 //
-// [최소 액션 간격 (신규 계정)]
-//   좋아요: 20~40초 | 댓글: 300~420초(5~7분) | 팔로우: 60~120초
-//   언팔로우: 60~120초 | DM: 120~300초 | 게시물: 60~120초
+// [Minimum action intervals (new accounts)]
+//   Like: 20~40s | Comment: 300~420s (5~7min) | Follow: 60~120s
+//   Unfollow: 60~120s | DM: 120~300s | Publish: 60~120s
 //
-// [주의사항]
-//   - 시간당 총 액션 15개 이하 (신규) / 40개 이하 (성숙)
-//   - 균일 간격은 봇 감지 → 랜덤 딜레이 필수
-//   - 동일 유저에게 반복 액션 금지
-//   - challenge 발생 시 브라우저에서 본인 인증 필요
-//   - challenge 후 24~48시간 대기 권장
+// [Notes]
+//   - Max 15 total actions/hour (new) / 40 (mature)
+//   - Uniform intervals trigger bot detection → random delay required
+//   - Repeated actions on the same user are prohibited
+//   - Challenge requires manual verification in the browser
+//   - Wait 24~48 hours after a challenge is recommended
 // ──────────────────────────────────────────────────────────────
 
 const DELAY = {
-  like:     [20, 40],    // 20~40초
-  comment:  [300, 420],  // 5~7분
-  follow:   [60, 120],   // 1~2분
-  unfollow: [60, 120],   // 1~2분
-  dm:       [120, 300],  // 2~5분
-  publish:  [60, 120],   // 1~2분
+  like:     [20, 40],    // 20~40s
+  comment:  [300, 420],  // 5~7min
+  follow:   [60, 120],   // 1~2min
+  unfollow: [60, 120],   // 1~2min
+  dm:       [120, 300],  // 2~5min
+  publish:  [60, 120],   // 1~2min
 };
 
 const HOURLY_LIMIT = {
@@ -69,7 +69,7 @@ const createInstaApiClient = ({ sessionPath }) => {
   let cachedUserId = null;
   let countersCache = null;
 
-  // ── 세션 파일 기반 Rate Limit 카운터 ──
+  // ── Session file-based Rate Limit counters ──
 
   const loadCounters = () => {
     if (countersCache) return countersCache;
@@ -90,7 +90,7 @@ const createInstaApiClient = ({ sessionPath }) => {
       if (!userId || !countersCache) return;
       saveRateLimits(sessionPath, userId, countersCache);
     } catch {
-      // 저장 실패해도 동작에 영향 없음
+      // Save failure does not affect operation
     }
   };
 
@@ -112,10 +112,10 @@ const createInstaApiClient = ({ sessionPath }) => {
     const dailyMax = DAILY_LIMIT[type];
     if (hourlyMax && c.hourly >= hourlyMax) {
       const waitMin = Math.ceil((3600000 - (Date.now() - c.hourStart)) / 60000);
-      throw new Error(`hourly_limit: ${type} 시간당 한도 ${hourlyMax}개 초과. ${waitMin}분 후 재시도하세요.`);
+      throw new Error(`hourly_limit: ${type} exceeded hourly limit of ${hourlyMax}. Retry in ${waitMin} minutes.`);
     }
     if (dailyMax && c.daily >= dailyMax) {
-      throw new Error(`daily_limit: ${type} 일일 한도 ${dailyMax}개 초과. 내일 다시 시도하세요.`);
+      throw new Error(`daily_limit: ${type} exceeded daily limit of ${dailyMax}. Try again tomorrow.`);
     }
   };
 
@@ -130,11 +130,11 @@ const createInstaApiClient = ({ sessionPath }) => {
     if (cachedCookies) return cachedCookies;
     const cookies = loadInstaSession(sessionPath);
     if (!cookies) {
-      throw new Error('세션 파일이 없습니다. 먼저 로그인해 주세요.');
+      throw new Error('No session file found. Please log in first.');
     }
     const sessionid = cookies.find((c) => c.name === 'sessionid');
     if (!sessionid?.value) {
-      throw new Error('세션에 유효한 쿠키가 없습니다. 다시 로그인해 주세요.');
+      throw new Error('No valid cookies in session. Please log in again.');
     }
     cachedCookies = cookies;
     return cookies;
@@ -172,21 +172,21 @@ const createInstaApiClient = ({ sessionPath }) => {
     if (res.status === 302 || res.status === 301) {
       const location = res.headers.get('location') || '';
       if (location.includes('/accounts/login')) {
-        throw new Error('세션이 만료되었습니다. 다시 로그인해 주세요.');
+        throw new Error('Session expired. Please log in again.');
       }
       if (location.includes('/challenge')) {
-        // challenge 자동 해결 시도
+        // Attempt automatic challenge resolution
         const resolved = await resolveChallenge();
         if (resolved) {
-          // 해결 후 원래 요청 재시도
+          // Retry original request after resolution
           return fetch(url, { ...options, headers, redirect: 'manual' });
         }
-        throw new Error('challenge_required: 본인 인증이 필요합니다. 브라우저에서 수동으로 처리해 주세요.');
+        throw new Error('challenge_required: Identity verification required. Please complete it manually in the browser.');
       }
-      throw new Error(`리다이렉트 발생: ${res.status} → ${location}`);
+      throw new Error(`Redirect occurred: ${res.status} → ${location}`);
     }
 
-    // challenge_required JSON 응답 처리
+    // Handle challenge_required JSON response
     if (res.status === 400 && !options.allowError) {
       const cloned = res.clone();
       try {
@@ -196,20 +196,20 @@ const createInstaApiClient = ({ sessionPath }) => {
           if (resolved) {
             return fetch(url, { ...options, headers, redirect: 'manual' });
           }
-          throw new Error('challenge_required: 본인 인증이 필요합니다.');
+          throw new Error('challenge_required: Identity verification required.');
         }
       } catch (e) {
         if (e.message.includes('challenge_required')) throw e;
-        // JSON 파싱 실패는 무시하고 원래 흐름
+        // Ignore JSON parse failure and continue original flow
       }
     }
 
     if (res.status === 401 || res.status === 403) {
-      throw new Error(`인증 오류 (${res.status}). 다시 로그인해 주세요.`);
+      throw new Error(`Authentication error (${res.status}). Please log in again.`);
     }
 
     if (!res.ok && !options.allowError) {
-      throw new Error(`Instagram API 오류: ${res.status} ${res.statusText}`);
+      throw new Error(`Instagram API error: ${res.status} ${res.statusText}`);
     }
 
     return res;
@@ -221,7 +221,7 @@ const createInstaApiClient = ({ sessionPath }) => {
     );
     const data = await res.json();
     const user = data?.data?.user;
-    if (!user) throw new Error(`프로필을 찾을 수 없습니다: ${username}`);
+    if (!user) throw new Error(`Profile not found: ${username}`);
     return {
       id: user.id,
       username: user.username,
@@ -322,7 +322,7 @@ const createInstaApiClient = ({ sessionPath }) => {
       has_threaded_comments: true,
     });
     const media = data?.data?.xdt_shortcode_media || data?.data?.shortcode_media;
-    if (!media) throw new Error(`게시물을 찾을 수 없습니다: ${shortcode}`);
+    if (!media) throw new Error(`Post not found: ${shortcode}`);
     return {
       id: media.id,
       code: media.shortcode,
@@ -343,7 +343,7 @@ const createInstaApiClient = ({ sessionPath }) => {
     };
   };
 
-  // ── Challenge 자동 해결 ──
+  // ── Automatic Challenge Resolution ──
 
   const resolveChallenge = async () => {
     try {
@@ -379,17 +379,17 @@ const createInstaApiClient = ({ sessionPath }) => {
       if (data.spam) {
         throw new Error(`rate_limit: ${data.feedback_title || 'Try Again Later'}`);
       }
-      // 이미 좋아요/취소 상태
+      // Already liked/unliked state
       return { status: 'already', message: data.message };
     }
-    throw new Error(`Instagram API 오류: ${res.status}`);
+    throw new Error(`Instagram API error: ${res.status}`);
   };
 
   const withDelay = async (type, fn) => {
-    // 한도 체크
+    // Check limits
     checkLimit(type);
 
-    // 랜덤 딜레이
+    // Random delay
     const [min, max] = DELAY[type] || [20, 40];
     const elapsed = (Date.now() - lastActionTime) / 1000;
     if (lastActionTime > 0 && elapsed < min) {
@@ -575,7 +575,7 @@ const createInstaApiClient = ({ sessionPath }) => {
     );
     const data = await res.json();
     if (data.status !== 'ok') {
-      throw new Error(`이미지 업로드 실패: ${data.message || 'unknown'}`);
+      throw new Error(`Image upload failed: ${data.message || 'unknown'}`);
     }
     return uploadId;
   };
@@ -601,7 +601,7 @@ const createInstaApiClient = ({ sessionPath }) => {
     });
     const data = await res.json();
     if (data.status !== 'ok') {
-      throw new Error(`게시물 생성 실패: ${data.message || 'unknown'}`);
+      throw new Error(`Post creation failed: ${data.message || 'unknown'}`);
     }
     return {
       id: data.media?.pk,
@@ -617,10 +617,10 @@ const createInstaApiClient = ({ sessionPath }) => {
       imageBuffer = fs.readFileSync(imagePath);
     } else if (imageUrl) {
       const res = await fetch(imageUrl);
-      if (!res.ok) throw new Error(`이미지 다운로드 실패: ${res.status}`);
+      if (!res.ok) throw new Error(`Image download failed: ${res.status}`);
       imageBuffer = Buffer.from(await res.arrayBuffer());
     } else {
-      throw new Error('imageUrl 또는 imagePath가 필요합니다.');
+      throw new Error('Either imageUrl or imagePath is required.');
     }
 
     const uploadId = await uploadPhoto(imageBuffer);
@@ -676,7 +676,7 @@ const createInstaApiClient = ({ sessionPath }) => {
         status[type] = {
           hourly: `${c.hourly}/${HOURLY_LIMIT[type]}`,
           daily: `${c.daily}/${DAILY_LIMIT[type]}`,
-          delay: `${DELAY[type]?.[0]}~${DELAY[type]?.[1]}초`,
+          delay: `${DELAY[type]?.[0]}~${DELAY[type]?.[1]}s`,
         };
       }
       return status;

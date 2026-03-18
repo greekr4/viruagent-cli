@@ -178,7 +178,7 @@ const runCommand = async (command, opts = {}) => {
     case 'logout':
       return withProvider(() => provider.logout())();
 
-    // ── Instagram 전용 (다른 프로바이더에도 메서드가 있으면 동작) ──
+    // ── Instagram-specific (works with other providers if the method exists) ──
 
     case 'get-profile':
       if (!opts.username) {

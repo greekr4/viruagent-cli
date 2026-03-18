@@ -174,8 +174,8 @@ const buildKeywordImageCandidates = async (keyword = '') => {
 
   const duckduckgoQueries = [
     safeKeyword,
-    `${safeKeyword} 이미지`,
-    `${safeKeyword} 뉴스`,
+    `${safeKeyword} image`,
+    `${safeKeyword} news`,
   ];
   const searchCandidates = [];
   const seen = new Set();
@@ -203,10 +203,10 @@ const buildKeywordImageCandidates = async (keyword = '') => {
 
   const fallbackQueries = [
     safeKeyword,
-    `${safeKeyword} 이미지`,
+    `${safeKeyword} image`,
     `${safeKeyword} news`,
-    '뉴스',
-    '세계 뉴스',
+    'news',
+    'world news',
   ];
   for (const query of fallbackQueries) {
     if (searchCandidates.length >= 6) {

@@ -21,7 +21,7 @@ const persistNaverSession = async (context, targetSessionPath) => {
     allCookies.push(...cookies);
   }
 
-  // 중복 제거 (name+domain 기준)
+  // Deduplicate by name+domain
   const seen = new Set();
   const unique = allCookies.filter((c) => {
     const key = `${c.name}@${c.domain}`;
@@ -96,7 +96,7 @@ const createNaverWithProviderSession = (askForAuthentication) => async (fn) => {
       });
 
       if (!loginResult.loggedIn) {
-        throw new Error(loginResult.message || '세션 갱신 후 로그인 상태가 확인되지 않았습니다.');
+        throw new Error(loginResult.message || 'Login status could not be verified after session refresh.');
       }
 
       return fn();

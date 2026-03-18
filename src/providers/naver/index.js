@@ -63,7 +63,7 @@ const createNaverProvider = ({ sessionPath }) => {
       };
 
       if (!resolved.manual && (!resolved.username || !resolved.password)) {
-        throw new Error('네이버 자동 로그인을 진행하려면 username/password가 필요합니다. 환경변수 NAVER_USERNAME / NAVER_PASSWORD를 설정하거나 --manual 모드를 사용해 주세요.');
+        throw new Error('Naver auto-login requires username/password. Set the NAVER_USERNAME / NAVER_PASSWORD environment variables or use --manual mode.');
       }
 
       const result = await askForAuthentication(resolved);
@@ -78,7 +78,7 @@ const createNaverProvider = ({ sessionPath }) => {
 
     async publish(payload) {
       return withProviderSession(async () => {
-        const title = payload.title || '제목 없음';
+        const title = payload.title || 'Untitled';
         const rawContent = payload.content || '';
         const openType = mapNaverVisibility(payload.visibility);
         const tags = normalizeNaverTagList(payload.tags);
@@ -91,7 +91,7 @@ const createNaverProvider = ({ sessionPath }) => {
         const rawCategories = await naverApi.getCategories();
         const categories = Object.entries(rawCategories).map(([name, id]) => ({ name, id: Number(id) })).sort((a, b) => a.id - b.id);
 
-        // 카테고리 결정
+        // Determine category
         let categoryNo = payload.category;
         if (categoryNo === undefined || categoryNo === null || String(categoryNo).trim() === '') {
           if (categories.length === 0) {
@@ -107,14 +107,14 @@ const createNaverProvider = ({ sessionPath }) => {
               title,
               openType,
               tags,
-              message: '발행을 위해 카테고리가 필요합니다. categories를 확인하고 category를 지정해 주세요.',
+              message: 'A category is required for publishing. Please check categories and specify a category.',
               categories,
             };
           }
         }
         categoryNo = String(categoryNo);
 
-        // 이미지 업로드 (imageUrls + relatedImageKeywords 기반 자동 검색)
+        // Image upload (auto-search based on imageUrls + relatedImageKeywords)
         let imageComponents = [];
         const hasImageSources = imageUrls.length > 0 || relatedImageKeywords.length > 0;
         if (autoUploadImages && hasImageSources) {
@@ -128,7 +128,7 @@ const createNaverProvider = ({ sessionPath }) => {
           imageComponents = uploadResult.components;
         }
 
-        // HTML → 에디터 컴포넌트 변환
+        // Convert HTML to editor components
         const contentComponents = await convertHtmlToEditorComponents(naverApi, rawContent, imageComponents);
 
         const result = await naverApi.publishPost({
@@ -154,7 +154,7 @@ const createNaverProvider = ({ sessionPath }) => {
     },
 
     async saveDraft(payload) {
-      // 네이버는 임시저장 API가 없으므로 비공개(openType: 0)로 발행
+      // Naver has no draft API, so publish as private (openType: 0)
       return this.publish({
         ...payload,
         visibility: 'private',
@@ -196,7 +196,7 @@ const createNaverProvider = ({ sessionPath }) => {
             provider: 'naver',
             mode: 'post',
             status: 'invalid_post_id',
-            message: 'postId가 필요합니다.',
+            message: 'postId is required.',
           };
         }
 
@@ -208,7 +208,7 @@ const createNaverProvider = ({ sessionPath }) => {
             mode: 'post',
             status: 'not_found',
             postId: resolvedPostId,
-            message: '해당 postId의 글을 찾을 수 없습니다.',
+            message: 'Post not found for the given postId.',
           };
         }
         return {

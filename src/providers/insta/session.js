@@ -33,7 +33,7 @@ const loadInstaSession = (sessionPath) => {
   return Array.isArray(raw?.cookies) ? raw.cookies : null;
 };
 
-// ── Rate Limit 영속화 (userId별) ──
+// ── Rate Limit persistence (per userId) ──
 
 const loadRateLimits = (sessionPath, userId) => {
   const raw = readSessionFile(sessionPath);
@@ -92,7 +92,7 @@ const createInstaWithProviderSession = (askForAuthentication) => async (fn) => {
       });
 
       if (!loginResult.loggedIn) {
-        throw new Error(loginResult.message || '세션 갱신 후 로그인 상태가 확인되지 않았습니다.');
+        throw new Error(loginResult.message || 'Login status could not be confirmed after session refresh.');
       }
 
       return fn();

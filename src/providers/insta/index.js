@@ -52,8 +52,8 @@ const createInstaProvider = ({ sessionPath }) => {
 
       if (!resolved.username || !resolved.password) {
         throw new Error(
-          '인스타그램 로그인에 username/password가 필요합니다. ' +
-          '환경변수 INSTA_USERNAME / INSTA_PASSWORD를 설정해 주세요.',
+          'Instagram login requires username/password. ' +
+          'Please set the INSTA_USERNAME / INSTA_PASSWORD environment variables.',
         );
       }
 
@@ -73,7 +73,7 @@ const createInstaProvider = ({ sessionPath }) => {
     async getProfile({ username } = {}) {
       return withProviderSession(async () => {
         if (!username) {
-          throw new Error('username이 필요합니다.');
+          throw new Error('username is required.');
         }
         const profile = await instaApi.getProfile(username);
         return {
@@ -99,7 +99,7 @@ const createInstaProvider = ({ sessionPath }) => {
     async listPosts({ username, limit = 12 } = {}) {
       return withProviderSession(async () => {
         if (!username) {
-          throw new Error('username이 필요합니다.');
+          throw new Error('username is required.');
         }
         const posts = await instaApi.getUserPosts(username, limit);
         return {
@@ -120,7 +120,7 @@ const createInstaProvider = ({ sessionPath }) => {
             provider: 'insta',
             mode: 'post',
             status: 'invalid_post_id',
-            message: 'postId(shortcode)가 필요합니다.',
+            message: 'postId (shortcode) is required.',
           };
         }
         const post = await instaApi.getPostDetail(shortcode);
@@ -134,7 +134,7 @@ const createInstaProvider = ({ sessionPath }) => {
 
     async follow({ username } = {}) {
       return withProviderSession(async () => {
-        if (!username) throw new Error('username이 필요합니다.');
+        if (!username) throw new Error('username is required.');
         const profile = await instaApi.getProfile(username);
         const result = await instaApi.followUser(profile.id);
         return {
@@ -151,7 +151,7 @@ const createInstaProvider = ({ sessionPath }) => {
 
     async unfollow({ username } = {}) {
       return withProviderSession(async () => {
-        if (!username) throw new Error('username이 필요합니다.');
+        if (!username) throw new Error('username is required.');
         const profile = await instaApi.getProfile(username);
         const result = await instaApi.unfollowUser(profile.id);
         return {
@@ -168,7 +168,7 @@ const createInstaProvider = ({ sessionPath }) => {
     async like({ postId } = {}) {
       return withProviderSession(async () => {
         const shortcode = String(postId || '').trim();
-        if (!shortcode) throw new Error('postId(shortcode)가 필요합니다.');
+        if (!shortcode) throw new Error('postId (shortcode) is required.');
         const mediaId = await instaApi.getMediaIdFromShortcode(shortcode);
         const result = await instaApi.likePost(mediaId);
         return { provider: 'insta', mode: 'like', postId: shortcode, status: result.status };
@@ -178,7 +178,7 @@ const createInstaProvider = ({ sessionPath }) => {
     async unlike({ postId } = {}) {
       return withProviderSession(async () => {
         const shortcode = String(postId || '').trim();
-        if (!shortcode) throw new Error('postId(shortcode)가 필요합니다.');
+        if (!shortcode) throw new Error('postId (shortcode) is required.');
         const mediaId = await instaApi.getMediaIdFromShortcode(shortcode);
         const result = await instaApi.unlikePost(mediaId);
         return { provider: 'insta', mode: 'unlike', postId: shortcode, status: result.status };
@@ -187,7 +187,7 @@ const createInstaProvider = ({ sessionPath }) => {
 
     async likeComment({ commentId } = {}) {
       return withProviderSession(async () => {
-        if (!commentId) throw new Error('commentId가 필요합니다.');
+        if (!commentId) throw new Error('commentId is required.');
         const result = await instaApi.likeComment(commentId);
         return { provider: 'insta', mode: 'likeComment', commentId, status: result.status };
       });
@@ -195,7 +195,7 @@ const createInstaProvider = ({ sessionPath }) => {
 
     async unlikeComment({ commentId } = {}) {
       return withProviderSession(async () => {
-        if (!commentId) throw new Error('commentId가 필요합니다.');
+        if (!commentId) throw new Error('commentId is required.');
         const result = await instaApi.unlikeComment(commentId);
         return { provider: 'insta', mode: 'unlikeComment', commentId, status: result.status };
       });
@@ -206,10 +206,10 @@ const createInstaProvider = ({ sessionPath }) => {
         const shortcode = String(postId || '').trim();
         const commentText = String(text || '').trim();
         if (!shortcode) {
-          throw new Error('postId(shortcode)가 필요합니다.');
+          throw new Error('postId (shortcode) is required.');
         }
         if (!commentText) {
-          throw new Error('댓글 내용(text)이 필요합니다.');
+          throw new Error('Comment text is required.');
         }
         const mediaId = await instaApi.getMediaIdFromShortcode(shortcode);
         const result = await instaApi.addComment(mediaId, commentText);
@@ -228,7 +228,7 @@ const createInstaProvider = ({ sessionPath }) => {
     async publish({ imageUrl, imagePath, caption = '' } = {}) {
       return withProviderSession(async () => {
         if (!imageUrl && !imagePath) {
-          throw new Error('imageUrl 또는 imagePath가 필요합니다.');
+          throw new Error('Either imageUrl or imagePath is required.');
         }
         const result = await instaApi.publishPost({ imageUrl, imagePath, caption });
         return {
@@ -243,7 +243,7 @@ const createInstaProvider = ({ sessionPath }) => {
       return withProviderSession(async () => {
         const shortcode = String(postId || '').trim();
         if (!shortcode) {
-          throw new Error('postId(shortcode)가 필요합니다.');
+          throw new Error('postId (shortcode) is required.');
         }
         const analysis = await smart.analyzePost({ shortcode });
         return {
@@ -258,7 +258,7 @@ const createInstaProvider = ({ sessionPath }) => {
       return withProviderSession(async () => {
         const shortcode = String(postId || '').trim();
         if (!shortcode) {
-          throw new Error('postId(shortcode)가 필요합니다.');
+          throw new Error('postId (shortcode) is required.');
         }
         const mediaId = await instaApi.getMediaIdFromShortcode(shortcode);
         const result = await instaApi.deletePost(mediaId);
@@ -277,7 +277,7 @@ const createInstaProvider = ({ sessionPath }) => {
         provider: 'insta',
         mode: 'resolveChallenge',
         resolved,
-        message: resolved ? 'Challenge 해결 완료' : 'Challenge 해결 실패. 브라우저에서 수동으로 처리해 주세요.',
+        message: resolved ? 'Challenge resolved successfully.' : 'Challenge resolution failed. Please handle it manually in the browser.',
       };
     },
 

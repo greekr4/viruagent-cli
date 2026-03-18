@@ -1,6 +1,6 @@
 const createSmartComment = (instaApi) => {
   const analyzePost = async ({ shortcode }) => {
-    // 1. 게시물 상세
+    // 1. Post detail
     const post = await instaApi.getPostDetail(shortcode);
     const caption = post.caption || '';
     const isVideo = post.isVideo;
@@ -8,15 +8,15 @@ const createSmartComment = (instaApi) => {
     const thumbnailUrl = post.imageUrl;
     const ownerUsername = post.owner?.username || '';
 
-    // 2. 작성자 프로필
+    // 2. Owner profile
     let ownerProfile = null;
     try {
       ownerProfile = await instaApi.getProfile(ownerUsername);
     } catch {
-      // 비공개 등 실패 무시
+      // Ignore failures (e.g., private account)
     }
 
-    // 3. 썸네일 이미지 base64 (Claude Code Vision용)
+    // 3. Thumbnail image base64 (for Claude Code Vision)
     let thumbnailBase64 = null;
     let thumbnailMediaType = 'image/jpeg';
     if (thumbnailUrl) {
@@ -29,15 +29,15 @@ const createSmartComment = (instaApi) => {
           if (ct) thumbnailMediaType = ct;
         }
       } catch {
-        // 실패해도 캡션만으로 진행
+        // Proceed with caption only on failure
       }
     }
 
     const contentType = isVideo
-      ? '영상(릴스)'
+      ? 'video (reel)'
       : mediaType?.includes('Sidecar')
-        ? '캐러셀(다중 이미지)'
-        : '사진';
+        ? 'carousel (multiple images)'
+        : 'photo';
 
     return {
       shortcode,

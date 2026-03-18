@@ -37,14 +37,14 @@ const extractImagePlaceholders = (content = '') => {
 
 const fetchImageBuffer = async (url, retryCount = 0) => {
   if (!url) {
-    throw new Error('이미지 URL이 없습니다.');
+    throw new Error('Image URL is missing.');
   }
 
   const localPath = resolveLocalImagePath(url);
   if (localPath && !/https?:/.test(url)) {
     const buffer = await fs.promises.readFile(localPath);
     if (!buffer || buffer.length === 0) {
-      throw new Error(`이미지 파일이 비어 있습니다: ${localPath}`);
+      throw new Error(`Image file is empty: ${localPath}`);
     }
 
     const extensionFromSignature = getImageSignatureExtension(buffer);
@@ -73,7 +73,7 @@ const fetchImageBuffer = async (url, retryCount = 0) => {
     });
 
     if (!response.ok) {
-      throw new Error(`이미지 다운로드 실패: ${response.status} ${response.statusText} (${url})`);
+      throw new Error(`Image download failed: ${response.status} ${response.statusText} (${url})`);
     }
 
     const contentType = response.headers.get('content-type') || '';
@@ -99,7 +99,7 @@ const fetchImageBuffer = async (url, retryCount = 0) => {
       || extensionFromSignature;
 
     if (!isImage) {
-      throw new Error(`이미지 콘텐츠가 아닙니다: ${contentType || '(미확인)'}, url=${finalUrl}`);
+      throw new Error(`Not an image content type: ${contentType || '(unknown)'}, url=${finalUrl}`);
     }
 
     return {
@@ -112,7 +112,7 @@ const fetchImageBuffer = async (url, retryCount = 0) => {
       await new Promise((resolve) => setTimeout(resolve, 800));
       return fetchImageBuffer(url, retryCount + 1);
     }
-    throw new Error(`이미지 다운로드 실패: ${error.message}`);
+    throw new Error(`Image download failed: ${error.message}`);
   } finally {
     clearTimeout(timeout);
   }
@@ -124,10 +124,10 @@ const uploadImageFromRemote = async (api, remoteUrl, fallbackName = 'image', dep
   if (downloaded?.isHtml && downloaded?.html) {
     const extractedImageUrl = extractImageFromHtml(downloaded.html, downloaded.finalUrl || remoteUrl);
     if (!extractedImageUrl) {
-      throw new Error('이미지 페이지에서 유효한 대표 이미지를 찾지 못했습니다.');
+      throw new Error('Could not find a valid representative image from the image page.');
     }
     if (depth >= 1 || extractedImageUrl === remoteUrl) {
-      throw new Error('이미지 페이지에서 추출된 URL이 유효하지 않아 업로드를 중단했습니다.');
+      throw new Error('The extracted URL from the image page is invalid. Upload aborted.');
     }
     return uploadImageFromRemote(api, extractedImageUrl, fallbackName, depth + 1);
   }
@@ -145,7 +145,7 @@ const uploadImageFromRemote = async (api, remoteUrl, fallbackName = 'image', dep
   const uploadedKage = normalizeUploadedImageThumbnail(uploaded) || (uploaded?.key ? `kage@${uploaded.key}` : null);
 
   if (!uploaded || !(uploaded.url || uploaded.key)) {
-    throw new Error('이미지 업로드 응답이 비정상적입니다.');
+    throw new Error('Image upload response is invalid.');
   }
 
   return {
@@ -256,7 +256,7 @@ const replaceImagePlaceholdersWithUploaded = async (
       uploaded: [],
       uploadedCount: 0,
       status: 'need_image_urls',
-      message: '자동 업로드할 이미지 후보 키워드가 없습니다. imageUrls 또는 relatedImageKeywords/플레이스홀더 키워드를 제공해 주세요.',
+      message: 'No image candidate keywords available for auto-upload. Please provide imageUrls or relatedImageKeywords/placeholder keywords.',
       requestedKeywords,
       requestedCount: requestedImageCount,
       providedImageUrls: collectedImageUrls.length,
@@ -275,7 +275,7 @@ const replaceImagePlaceholdersWithUploaded = async (
         index: i,
         sourceUrl: null,
         keyword: target.keyword,
-        message: '이미지 소스가 없습니다.',
+        message: 'No image source available.',
       });
       continue;
     }
@@ -302,7 +302,7 @@ const replaceImagePlaceholdersWithUploaded = async (
         break;
       } catch (error) {
         lastMessage = error.message;
-        console.log('이미지 처리 실패:', sourceUrl, error.message);
+        console.log('Image processing failed:', sourceUrl, error.message);
       }
     }
 
@@ -337,7 +337,7 @@ const replaceImagePlaceholdersWithUploaded = async (
           break;
         } catch (error) {
           lastMessage = error.message;
-          console.log('이미지 처리 실패(보정 소스):', sourceUrl, error.message);
+          console.log('Image processing failed (fallback source):', sourceUrl, error.message);
         }
       }
     }
@@ -347,7 +347,7 @@ const replaceImagePlaceholdersWithUploaded = async (
         index: i,
         sourceUrl: uniqueSources[0],
         keyword: target.keyword,
-        message: `이미지 업로드 실패(대체 이미지 재시도 포함): ${lastMessage}`,
+        message: `Image upload failed (including fallback retries): ${lastMessage}`,
       });
       continue;
     }
@@ -369,7 +369,7 @@ const replaceImagePlaceholdersWithUploaded = async (
         uploaded: [],
         uploadedCount: 0,
         status: 'image_upload_failed',
-        message: '이미지 업로드에 실패했습니다. 수집한 이미지 URL을 확인해 다시 호출해 주세요.',
+        message: 'Image upload failed. Please verify the collected image URLs and try again.',
         errors: uploadErrors,
         requestedKeywords,
         requestedCount: requestedImageCount,
@@ -384,7 +384,7 @@ const replaceImagePlaceholdersWithUploaded = async (
         uploaded: uploadedImages,
         uploadedCount: uploadedImages.length,
         status: 'insufficient_images',
-        message: `최소 이미지 업로드 장수를 충족하지 못했습니다. (요청: ${safeMinimumImageCount} / 실제: ${uploadedImages.length})`,
+        message: `Minimum image upload count not met. (required: ${safeMinimumImageCount} / actual: ${uploadedImages.length})`,
         errors: uploadErrors,
         requestedKeywords,
         requestedCount: requestedImageCount,
@@ -400,7 +400,7 @@ const replaceImagePlaceholdersWithUploaded = async (
       uploaded: uploadedImages,
       uploadedCount: uploadedImages.length,
       status: 'image_upload_partial',
-      message: '일부 이미지 업로드가 실패했습니다.',
+      message: 'Some image uploads failed.',
       errors: uploadErrors,
       requestedCount: requestedImageCount,
       uploadedPlaceholders: uploadedImages.length,
@@ -414,7 +414,7 @@ const replaceImagePlaceholdersWithUploaded = async (
       uploaded: uploadedImages,
       uploadedCount: uploadedImages.length,
       status: 'insufficient_images',
-      message: `최소 이미지 업로드 장수를 충족하지 못했습니다. (요청: ${safeMinimumImageCount} / 실제: ${uploadedImages.length})`,
+      message: `Minimum image upload count not met. (required: ${safeMinimumImageCount} / actual: ${uploadedImages.length})`,
       errors: uploadErrors,
       requestedKeywords,
       requestedCount: requestedImageCount,
@@ -546,8 +546,8 @@ const resolveMandatoryThumbnail = async ({
         .split(',')
         .map((item) => item.trim())),
     String(title || '').trim(),
-    '뉴스 이미지',
-    '뉴스',
+    'news image',
+    'news',
     'thumbnail',
   ]);
 

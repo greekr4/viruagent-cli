@@ -31,19 +31,19 @@ const normalizeCookies = (session) => {
 const readSessionCookies = (sessionPath) => {
   const resolvedPath = path.resolve(sessionPath);
   if (!fs.existsSync(resolvedPath)) {
-    throw new Error(`세션 파일이 없습니다. ${resolvedPath}에 로그인 정보를 먼저 저장하세요.`);
+    throw new Error(`Session file not found. Please save login credentials to ${resolvedPath} first.`);
   }
 
   let raw;
   try {
     raw = JSON.parse(fs.readFileSync(resolvedPath, 'utf-8'));
   } catch (error) {
-    throw new Error(`세션 파일 파싱 실패: ${error.message}`);
+    throw new Error(`Failed to parse session file: ${error.message}`);
   }
 
   const cookies = normalizeCookies(raw);
   if (!cookies.length) {
-    throw new Error('세션에 유효한 쿠키가 없습니다. 다시 로그인해 주세요.');
+    throw new Error('No valid cookies found in session. Please log in again.');
   }
 
   return cookies.join('; ');
@@ -70,7 +70,7 @@ const createTistoryApiClient = ({ sessionPath }) => {
 
   const getBase = () => {
     if (!blogName) {
-      throw new Error('블로그 이름이 초기화되지 않았습니다. initBlog()를 먼저 호출하세요.');
+      throw new Error('Blog name not initialized. Call initBlog() first.');
     }
     return `https://${blogName}.tistory.com/manage`;
   };
@@ -131,7 +131,7 @@ const createTistoryApiClient = ({ sessionPath }) => {
         } catch {
           detail = '';
         }
-        throw new Error(`요청 실패: ${response.status} ${response.statusText}${detail}`);
+        throw new Error(`Request failed: ${response.status} ${response.statusText}${detail}`);
       }
       return response.json();
     } finally {
@@ -148,7 +148,7 @@ const createTistoryApiClient = ({ sessionPath }) => {
         ...options,
       });
       if (!response.ok) {
-        throw new Error(`요청 실패: ${response.status} ${response.statusText}`);
+        throw new Error(`Request failed: ${response.status} ${response.statusText}`);
       }
       return response.text();
     } finally {
@@ -181,18 +181,18 @@ const createTistoryApiClient = ({ sessionPath }) => {
       redirect: 'follow',
     });
     if (!response.ok) {
-      throw new Error(`블로그 정보 조회 실패: ${response.status}`);
+      throw new Error(`Failed to fetch blog info: ${response.status}`);
     }
 
     const contentType = response.headers.get('content-type') || '';
     if (!contentType.includes('application/json')) {
-      throw new Error('세션이 만료되었습니다. /auth/login으로 다시 로그인하세요.');
+      throw new Error('Session expired. Please log in again via /auth/login.');
     }
 
     const json = await response.json();
     const defaultBlog = (json?.data || []).find((blog) => blog?.defaultBlog) || (json?.data || [])[0];
     if (!defaultBlog) {
-      throw new Error('블로그를 찾을 수 없습니다.');
+      throw new Error('Blog not found.');
     }
 
     blogName = defaultBlog.name;
@@ -255,14 +255,14 @@ const createTistoryApiClient = ({ sessionPath }) => {
 
     const match = html.match(/window\.Config\s*=\s*(\{[\s\S]*?\})\s*(?:\n|;)/);
     if (!match) {
-      throw new Error('카테고리 파싱 실패');
+      throw new Error('Failed to parse categories');
     }
 
     const sandbox = {};
     vm.runInNewContext(`var result = ${match[1]};`, sandbox);
     const rootCategories = sandbox?.result?.blog?.categories;
     if (!Array.isArray(rootCategories)) {
-      throw new Error('카테고리 파싱 실패');
+      throw new Error('Failed to parse categories');
     }
 
     return flattenCategories(rootCategories, {});
@@ -287,12 +287,12 @@ const createTistoryApiClient = ({ sessionPath }) => {
 
     if (!response.ok) {
       const text = await response.text().catch(() => '');
-      throw new Error(`이미지 업로드 실패: ${response.status} ${text ? `: ${text.slice(0, 500)}` : ''}`);
+      throw new Error(`Image upload failed: ${response.status} ${text ? `: ${text.slice(0, 500)}` : ''}`);
     }
 
     const uploaded = await response.json();
     if (!uploaded?.url) {
-      throw new Error('이미지 업로드 응답에 URL이 없습니다.');
+      throw new Error('Image upload response does not contain a URL.');
     }
     return uploaded;
   };

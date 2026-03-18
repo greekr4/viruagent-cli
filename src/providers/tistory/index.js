@@ -23,8 +23,8 @@ const createTistoryProvider = ({ sessionPath }) => {
     status: 'pending_2fa',
     loggedIn: false,
     message: mode === 'otp'
-      ? '2차 인증이 필요합니다. otp 코드를 twoFactorCode로 전달해 주세요.'
-      : '카카오 2차 인증이 필요합니다. 앱에서 인증 후 다시 실행하면 됩니다.',
+      ? '2FA is required. Please provide the OTP code via twoFactorCode.'
+      : 'Kakao 2FA is required. Please verify in the app and try again.',
   });
 
   const askForAuthentication = createAskForAuthentication({
@@ -80,7 +80,7 @@ const createTistoryProvider = ({ sessionPath }) => {
       };
 
       if (!resolved.manual && (!resolved.username || !resolved.password)) {
-        throw new Error('티스토리 자동 로그인을 진행하려면 username/password가 필요합니다. 요청 값으로 전달하거나, 환경변수 TISTORY_USERNAME / TISTORY_PASSWORD를 설정해 주세요.');
+        throw new Error('Tistory auto-login requires username/password. Please provide them directly or set TISTORY_USERNAME/TISTORY_PASSWORD environment variables.');
       }
 
       const result = await askForAuthentication(resolved);
@@ -95,7 +95,7 @@ const createTistoryProvider = ({ sessionPath }) => {
 
     async publish(payload) {
       return withProviderSession(async () => {
-        const title = payload.title || '제목 없음';
+        const title = payload.title || 'Untitled';
         const rawContent = payload.content || '';
         const visibility = mapVisibility(payload.visibility);
         const tag = normalizeTagList(payload.tags);
@@ -198,7 +198,7 @@ const createTistoryProvider = ({ sessionPath }) => {
               title,
               visibility,
               tags: tag,
-              message: '발행을 위해 카테고리가 필요합니다. categories를 확인하고 category를 지정해 주세요.',
+              message: 'A category is required for publishing. Please check categories and specify a category.',
               categories,
             };
           }
@@ -208,7 +208,7 @@ const createTistoryProvider = ({ sessionPath }) => {
           } else {
             if (!process.stdin || !process.stdin.isTTY) {
               const sampleCategory = categories.slice(0, 5).map((item) => `${item.id}: ${item.name}`).join(', ');
-              const sampleText = sampleCategory.length > 0 ? ` 예: ${sampleCategory}` : '';
+              const sampleText = sampleCategory.length > 0 ? ` e.g. ${sampleCategory}` : '';
               return {
                 provider: 'tistory',
                 mode: 'publish',
@@ -217,7 +217,7 @@ const createTistoryProvider = ({ sessionPath }) => {
                 title,
                 visibility,
                 tags: tag,
-                message: `카테고리가 지정되지 않았습니다. 비대화형 환경에서는 --category 옵션이 필수입니다. 사용법: --category <카테고리ID>.${sampleText}`,
+                message: `No category specified. The --category option is required in non-interactive mode. Usage: --category <categoryID>.${sampleText}`,
                 categories,
               };
             }
@@ -232,7 +232,7 @@ const createTistoryProvider = ({ sessionPath }) => {
                 title,
                 visibility,
                 tags: tag,
-                message: '카테고리가 지정되지 않았습니다. 카테고리를 입력해 발행을 진행해 주세요.',
+                message: 'No category specified. Please enter a category to proceed with publishing.',
                 categories,
               };
             }
@@ -251,7 +251,7 @@ const createTistoryProvider = ({ sessionPath }) => {
             title,
             visibility,
             tags: tag,
-            message: '유효한 category를 숫자로 지정해 주세요.',
+            message: 'Please specify a valid category as a number.',
             categories,
           };
         }
@@ -266,7 +266,7 @@ const createTistoryProvider = ({ sessionPath }) => {
             title,
             visibility,
             tags: tag,
-            message: '존재하지 않는 category입니다. categories를 확인해 주세요.',
+            message: 'The specified category does not exist. Please check the available categories.',
             categories,
           };
         }
@@ -324,7 +324,7 @@ const createTistoryProvider = ({ sessionPath }) => {
               minimumImageCount: safeMinimumImageCount,
               url: fallbackPublishResult.entryUrl || null,
               raw: fallbackPublishResult,
-              message: '발행 제한(403)으로 인해 비공개로 발행했습니다.',
+              message: 'Published as private due to publish limit (403).',
               fallbackThumbnail: finalThumbnail,
             };
           } catch (fallbackError) {
@@ -344,7 +344,7 @@ const createTistoryProvider = ({ sessionPath }) => {
               images: enrichedImages.images,
               imageCount: enrichedImages.uploadedCount,
               minimumImageCount: safeMinimumImageCount,
-              message: '발행 제한(403)으로 인해 공개/비공개 모두 실패했습니다.',
+              message: 'Both public and private publishing failed due to publish limit (403).',
               raw: {
                 success: false,
                 error: fallbackError.message,
@@ -357,7 +357,7 @@ const createTistoryProvider = ({ sessionPath }) => {
 
     async saveDraft(payload) {
       return withProviderSession(async () => {
-        const title = payload.title || '임시저장';
+        const title = payload.title || 'Draft';
         const rawContent = payload.content || '';
         const rawThumbnail = payload.thumbnail || null;
         const tag = normalizeTagList(payload.tags);
@@ -499,7 +499,7 @@ const createTistoryProvider = ({ sessionPath }) => {
             provider: 'tistory',
             mode: 'post',
             status: 'invalid_post_id',
-            message: 'postId가 필요합니다.',
+            message: 'postId is required.',
           };
         }
 
@@ -515,7 +515,7 @@ const createTistoryProvider = ({ sessionPath }) => {
             status: 'not_found',
             postId: resolvedPostId,
             includeDraft: Boolean(includeDraft),
-            message: '해당 postId의 글을 찾을 수 없습니다.',
+            message: 'No post found with the specified postId.',
           };
         }
         return {

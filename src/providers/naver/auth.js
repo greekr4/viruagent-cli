@@ -30,28 +30,28 @@ const checkLoginResult = async (page) => {
   const patterns = NAVER_LOGIN_ERROR_PATTERNS;
 
   if (content.includes(patterns.wrongPassword)) {
-    return { success: false, error: 'wrong_password', message: '비밀번호가 잘못되었습니다.' };
+    return { success: false, error: 'wrong_password', message: 'Incorrect password.' };
   }
   if (content.includes(patterns.accountProtected)) {
-    return { success: false, error: 'account_protected', message: '계정 보호조치가 활성화되어 있습니다.' };
+    return { success: false, error: 'account_protected', message: 'Account protection is enabled.' };
   }
   if (content.includes(patterns.regionBlocked)) {
-    return { success: false, error: 'region_blocked', message: '허용하지 않은 지역에서 접속이 감지되었습니다.' };
+    return { success: false, error: 'region_blocked', message: 'Access from a disallowed region was detected.' };
   }
   if (content.includes(patterns.usageRestricted)) {
-    return { success: false, error: 'usage_restricted', message: '비정상적인 활동이 감지되어 이용이 제한되었습니다.' };
+    return { success: false, error: 'usage_restricted', message: 'Abnormal activity detected. Usage has been restricted.' };
   }
   if (content.includes(patterns.twoFactor)) {
-    return { success: false, error: 'two_factor', message: '2단계 인증이 필요합니다. --manual 모드로 로그인해 주세요.' };
+    return { success: false, error: 'two_factor', message: 'Two-factor authentication required. Please log in using --manual mode.' };
   }
 
-  // 캡차 감지
+  // Captcha detection
   const hasCaptcha = patterns.captcha.some((p) => content.toLowerCase().includes(p.toLowerCase()));
   if (hasCaptcha) {
-    return { success: false, error: 'captcha', message: '캡차가 감지되었습니다. --manual 모드를 사용해 주세요.' };
+    return { success: false, error: 'captcha', message: 'Captcha detected. Please use --manual mode.' };
   }
 
-  // 성공 (운영원칙 위반 포함)
+  // Success (including operation violation notice)
   if (content.includes(patterns.operationViolation) || content.includes(patterns.newDevice)) {
     return { success: true };
   }
@@ -61,7 +61,7 @@ const checkLoginResult = async (page) => {
     return { success: true };
   }
 
-  return { success: false, error: 'unknown', message: '로그인 상태를 확인할 수 없습니다.' };
+  return { success: false, error: 'unknown', message: 'Unable to verify login status.' };
 };
 
 const createAskForAuthentication = ({ sessionPath, naverApi }) => async ({
@@ -76,7 +76,7 @@ const createAskForAuthentication = ({ sessionPath, naverApi }) => async ({
   const resolvedPassword = password || readNaverCredentials().password;
 
   if (!manual && (!resolvedUsername || !resolvedPassword)) {
-    throw new Error('네이버 로그인에 id/pw가 필요합니다. 환경변수 NAVER_USERNAME/NAVER_PASSWORD를 설정하거나 --manual 모드를 사용해 주세요.');
+    throw new Error('Naver login requires id/pw. Set the NAVER_USERNAME/NAVER_PASSWORD environment variables or use --manual mode.');
   }
 
   const browser = await chromium.launch({
@@ -102,13 +102,13 @@ const createAskForAuthentication = ({ sessionPath, naverApi }) => async ({
     if (manual) {
       console.log('');
       console.log('==============================');
-      console.log('수동 로그인 모드로 전환합니다.');
-      console.log('브라우저에서 직접 네이버 로그인을 완료해 주세요.');
-      console.log('최대 5분 내에 로그인을 완료해 주세요.');
+      console.log('Switching to manual login mode.');
+      console.log('Please complete the Naver login in the browser.');
+      console.log('Please complete the login within 5 minutes.');
       console.log('==============================');
       loginSuccess = await waitForNaverLoginFinish(page, context, 300000);
     } else {
-      // JS 인젝션으로 ID/PW 입력 (fill() 대신 — 봇 감지 우회)
+      // Inject ID/PW via JS (instead of fill() — bypasses bot detection)
       await page.evaluate((id) => {
         const el = document.getElementById('id');
         if (el) el.value = id;
@@ -121,14 +121,14 @@ const createAskForAuthentication = ({ sessionPath, naverApi }) => async ({
       }, resolvedPassword);
       await sleep(300);
 
-      // 로그인 유지 체크
+      // Check "keep me logged in"
       const keepCheck = await page.$(NAVER_LOGIN_SELECTORS.keepLogin);
       if (keepCheck) {
         await keepCheck.click().catch(() => {});
         await sleep(300);
       }
 
-      // 로그인 버튼 클릭
+      // Click login button
       const loginBtn = await page.$(NAVER_LOGIN_SELECTORS.submit);
       if (loginBtn) {
         await loginBtn.click();
@@ -137,7 +137,7 @@ const createAskForAuthentication = ({ sessionPath, naverApi }) => async ({
       }
       await sleep(3000);
 
-      // 결과 확인
+      // Check result
       const result = await checkLoginResult(page);
       if (!result.success) {
         throw new Error(result.message);
@@ -145,7 +145,7 @@ const createAskForAuthentication = ({ sessionPath, naverApi }) => async ({
 
       loginSuccess = await waitForNaverLoginFinish(page, context, 15000);
       if (!loginSuccess) {
-        // URL 기반 추가 확인
+        // Additional URL-based check
         const url = page.url();
         if (url.includes('naver.com') && !url.includes('nid.naver.com/nidlogin')) {
           loginSuccess = true;
@@ -154,7 +154,7 @@ const createAskForAuthentication = ({ sessionPath, naverApi }) => async ({
     }
 
     if (!loginSuccess) {
-      throw new Error('네이버 로그인에 실패했습니다. 아이디/비밀번호를 확인하거나 --manual 모드를 사용해 주세요.');
+      throw new Error('Naver login failed. Please verify your id/password or use --manual mode.');
     }
 
     await persistNaverSession(context, sessionPath);

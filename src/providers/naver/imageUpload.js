@@ -4,7 +4,7 @@ const { createImageComponent } = require('./editorConvert');
 const { buildKeywordImageCandidates } = require('../tistory/imageSources');
 
 /**
- * 이미지 URL 또는 로컬 경로에서 이미지 버퍼를 가져온다.
+ * Fetches an image buffer from a URL or local file path.
  */
 const fetchImageBuffer = async (source) => {
   if (fs.existsSync(source)) {
@@ -26,7 +26,7 @@ const fetchImageBuffer = async (source) => {
       },
     });
     if (!response.ok) {
-      throw new Error(`이미지 다운로드 실패: ${response.status} — ${source}`);
+      throw new Error(`Image download failed: ${response.status} — ${source}`);
     }
     const arrayBuffer = await response.arrayBuffer();
     const urlPath = new URL(response.url || source).pathname;
@@ -41,7 +41,7 @@ const fetchImageBuffer = async (source) => {
 };
 
 /**
- * 이미지 소스들을 네이버에 업로드하고 에디터 컴포넌트 배열로 반환한다.
+ * Uploads image sources to Naver and returns an array of editor components.
  */
 const uploadAndCreateImageComponents = async (naverApi, imageSources, token) => {
   const components = [];
@@ -65,8 +65,8 @@ const uploadAndCreateImageComponents = async (naverApi, imageSources, token) => 
 };
 
 /**
- * relatedImageKeywords에서 이미지를 검색하고, imageUrls와 합쳐서 업로드한다.
- * 티스토리 imageSources.js의 buildKeywordImageCandidates를 재사용한다.
+ * Searches for images from relatedImageKeywords, merges with imageUrls, and uploads them.
+ * Reuses buildKeywordImageCandidates from Tistory's imageSources.js.
  */
 const collectAndUploadImages = async (naverApi, {
   imageUrls = [],
@@ -76,7 +76,7 @@ const collectAndUploadImages = async (naverApi, {
 }) => {
   const collectedUrls = [...imageUrls];
 
-  // 키워드에서 이미지 URL 검색
+  // Search image URLs from keywords
   const normalizedKeywords = Array.isArray(relatedImageKeywords)
     ? relatedImageKeywords.map((k) => String(k || '').trim()).filter(Boolean)
     : String(relatedImageKeywords || '').split(',').map((k) => k.trim()).filter(Boolean);
@@ -92,7 +92,7 @@ const collectAndUploadImages = async (naverApi, {
         }
       }
     } catch {
-      // 검색 실패 시 무시
+      // Ignore search failures
     }
   }
 

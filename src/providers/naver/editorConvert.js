@@ -60,29 +60,29 @@ const createImageComponent = (imgData) => ({
 const stripHtmlTags = (html) => html.replace(/<[^>]*>/g, '');
 
 /**
- * HTML을 네이버 에디터 컴포넌트 배열로 변환한다.
- * Primary: 네이버 API (upconvert.editor.naver.com)
- * Fallback: 커스텀 파싱
+ * Converts HTML to an array of Naver editor components.
+ * Primary: Naver API (upconvert.editor.naver.com)
+ * Fallback: Custom parsing
  */
 const convertHtmlToEditorComponents = async (naverApi, html, imageComponents = []) => {
-  // 1. 네이버 API 변환 시도
+  // 1. Try Naver API conversion
   const apiComponents = await naverApi.convertHtmlToComponents(html);
   if (Array.isArray(apiComponents) && apiComponents.length > 0) {
-    // 이미지를 글 맨 위에 배치 (티스토리 스타일)
+    // Place images at the top of the post (Tistory style)
     return [...imageComponents, ...apiComponents];
   }
 
-  // 2. Fallback: 커스텀 파싱 (이미지를 글 맨 위에 배치)
+  // 2. Fallback: Custom parsing (images placed at the top)
   const textComponents = parseHtmlToComponents(html, []);
   return [...imageComponents, ...textComponents];
 };
 
 /**
- * HTML을 수동으로 파싱하여 네이버 에디터 컴포넌트로 변환한다.
- * Python의 process_html_to_components() 포팅
+ * Manually parses HTML and converts it to Naver editor components.
+ * Ported from Python's process_html_to_components()
  */
 const parseHtmlToComponents = (html, imageComponents = []) => {
-  // heading(h1-h6) 또는 strong 태그 기준으로 분할
+  // Split by heading (h1-h6) or strong tags
   const segments = html.split(/(<h[1-6][^>]*>.*?<\/h[1-6]>|<strong>.*?<\/strong>)/is);
   const components = [];
   const images = [...imageComponents];
@@ -96,7 +96,7 @@ const parseHtmlToComponents = (html, imageComponents = []) => {
     const isStrong = /<strong>/i.test(trimmed);
     const isBoldSection = isHeading || isStrong;
 
-    // heading 태그 자체는 건너뛰기 (Python 코드의 continue와 동일)
+    // Skip heading tags themselves (same as Python code's continue)
     if (/^<h[1-6][^>]*>.*<\/h[1-6]>$/is.test(trimmed)) {
       const text = stripHtmlTags(trimmed);
       if (!text.trim()) continue;
@@ -111,7 +111,7 @@ const parseHtmlToComponents = (html, imageComponents = []) => {
           ctype: 'text',
         }));
       } else {
-        // 이미지 삽입
+        // Insert image
         if (images.length > 0) {
           components.push(images.shift());
         }
@@ -125,7 +125,7 @@ const parseHtmlToComponents = (html, imageComponents = []) => {
       continue;
     }
 
-    // 일반 텍스트 세그먼트
+    // Plain text segment
     const text = stripHtmlTags(trimmed);
     if (!text.trim()) continue;
 
@@ -146,7 +146,7 @@ const parseHtmlToComponents = (html, imageComponents = []) => {
         ctype: 'quotation',
       }));
     } else {
-      // 일반 단락: <p> 또는 <br> 기준으로 분할
+      // Regular paragraphs: split by <p> or <br>
       const paragraphs = text.split(/\n+/).filter((p) => p.trim());
       for (const para of paragraphs) {
         components.push(createTextComponent(para.trim()));
@@ -154,7 +154,7 @@ const parseHtmlToComponents = (html, imageComponents = []) => {
     }
   }
 
-  // 남은 이미지 append
+  // Append remaining images
   for (const img of images) {
     components.push(img);
   }
@@ -163,7 +163,7 @@ const parseHtmlToComponents = (html, imageComponents = []) => {
 };
 
 /**
- * API 반환 컴포넌트 사이에 이미지를 삽입한다.
+ * Intersperses images between API-returned components.
  */
 const intersperse = (components, imageComponents) => {
   if (!imageComponents.length) return components;
@@ -181,7 +181,7 @@ const intersperse = (components, imageComponents) => {
     result.push(comp);
   }
 
-  // 남은 이미지 append
+  // Append remaining images
   for (const img of images) {
     result.push(img);
   }
