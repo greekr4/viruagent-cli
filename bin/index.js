@@ -18,7 +18,7 @@ program
 
 // Global options
 const addProviderOption = (cmd) =>
-  cmd.option('--provider <name>', 'Provider name (tistory or naver)', 'tistory');
+  cmd.option('--provider <name>', 'Provider name (tistory, naver, insta)', 'tistory');
 
 const addDryRunOption = (cmd) =>
   cmd.option('--dry-run', 'Validate params without executing', false);
@@ -102,6 +102,7 @@ const listPostsCmd = program
   .description('List recent posts');
 addProviderOption(listPostsCmd);
 listPostsCmd
+  .option('--username <username>', 'Target username (required for insta)')
   .option('--limit <n>', 'Number of posts to retrieve', '20')
   .action((opts) => execute('list-posts', opts));
 
@@ -129,6 +130,95 @@ const listProvidersCmd = program
   .command('list-providers')
   .description('List supported providers');
 listProvidersCmd.action((opts) => execute('list-providers', opts));
+
+// --- Instagram / SNS commands ---
+
+const getProfileCmd = program
+  .command('get-profile')
+  .description('Get user profile info');
+addProviderOption(getProfileCmd);
+getProfileCmd
+  .option('--username <username>', 'Target username')
+  .action((opts) => execute('get-profile', opts));
+
+const getFeedCmd = program
+  .command('get-feed')
+  .description('Get feed timeline');
+addProviderOption(getFeedCmd);
+getFeedCmd.action((opts) => execute('get-feed', opts));
+
+const likeCmd = program
+  .command('like')
+  .description('Like a post');
+addProviderOption(likeCmd);
+likeCmd
+  .option('--post-id <shortcode>', 'Post shortcode')
+  .action((opts) => execute('like', opts));
+
+const unlikeCmd = program
+  .command('unlike')
+  .description('Unlike a post');
+addProviderOption(unlikeCmd);
+unlikeCmd
+  .option('--post-id <shortcode>', 'Post shortcode')
+  .action((opts) => execute('unlike', opts));
+
+const commentCmd = program
+  .command('comment')
+  .description('Comment on a post');
+addProviderOption(commentCmd);
+commentCmd
+  .option('--post-id <shortcode>', 'Post shortcode')
+  .option('--text <text>', 'Comment text')
+  .action((opts) => execute('comment', opts));
+
+const followCmd = program
+  .command('follow')
+  .description('Follow a user');
+addProviderOption(followCmd);
+followCmd
+  .option('--username <username>', 'Target username')
+  .action((opts) => execute('follow', opts));
+
+const unfollowCmd = program
+  .command('unfollow')
+  .description('Unfollow a user');
+addProviderOption(unfollowCmd);
+unfollowCmd
+  .option('--username <username>', 'Target username')
+  .action((opts) => execute('unfollow', opts));
+
+const likeCommentCmd = program
+  .command('like-comment')
+  .description('Like a comment');
+addProviderOption(likeCommentCmd);
+likeCommentCmd
+  .option('--comment-id <id>', 'Comment ID')
+  .action((opts) => execute('like-comment', opts));
+
+const unlikeCommentCmd = program
+  .command('unlike-comment')
+  .description('Unlike a comment');
+addProviderOption(unlikeCommentCmd);
+unlikeCommentCmd
+  .option('--comment-id <id>', 'Comment ID')
+  .action((opts) => execute('unlike-comment', opts));
+
+const analyzePostCmd = program
+  .command('analyze-post')
+  .description('Analyze a post (thumbnail + caption + profile)');
+addProviderOption(analyzePostCmd);
+analyzePostCmd
+  .option('--post-id <shortcode>', 'Post shortcode')
+  .action((opts) => execute('analyze-post', opts));
+
+const rateLimitCmd = program
+  .command('rate-limit-status')
+  .description('Show current rate limit usage');
+addProviderOption(rateLimitCmd);
+rateLimitCmd.action((opts) => execute('rate-limit-status', opts));
+
+// --- Utility commands ---
 
 const installSkillCmd = program
   .command('install-skill')

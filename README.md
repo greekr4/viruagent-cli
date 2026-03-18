@@ -18,9 +18,17 @@
   <a href="README.ko.md"><img src="https://img.shields.io/badge/한국어-red" alt="Korean"></a>
 </p>
 
-**A CLI tool where AI agents write, tag, and publish blog posts automatically.**
+**A CLI tool where AI agents write, publish, and engage across blog & social platforms automatically.**
 
 Designed not for humans, but for **AI agents**.
+
+## Supported Platforms
+
+| Platform | Login | Features | Guide |
+|----------|-------|----------|-------|
+| **Tistory** | Playwright (Kakao) | Publish, Draft, Categories, Image Upload | [Guide](docs/guide-tistory.md) |
+| **Naver Blog** | Playwright (Naver) | Publish, Categories, SE Editor, Image Upload | [Guide](docs/guide-naver.md) |
+| **Instagram** | HTTP (No Browser) | Like, Comment, Follow, Post, Profile, Feed, Rate Limit | [Guide](docs/guide-instagram.md) |
 
 ## How It Works
 
@@ -31,13 +39,13 @@ User: "Write a blog post"
   → Skill instructs the agent on workflow
     → Agent calls CLI (login, list categories, publish, etc.)
 
-User: /viruagent "Write a post"
-  → Direct skill invocation
+User: "Like and comment on all posts from @username"
+  → Agent uses Instagram provider (login, listPosts, like, analyzePost, comment)
 ```
 
-- **Skill file**: Defines what to do and in what order (post structure, tag rules, image settings)
-- **CLI**: Executes tasks per skill instructions (login, API calls, browser automation)
-- **Agent**: Reads the skill and orchestrates CLI commands autonomously
+- **Skill file**: Defines what to do and in what order
+- **CLI**: Executes tasks per skill instructions
+- **Agent**: Reads the skill and orchestrates commands autonomously
 - **Custom**: Edit the skill file to customize behavior
 
 ## Quick Start
@@ -67,30 +75,44 @@ Tell the user that viruagent-cli installation is complete.
 ### Tistory
 
 ```bash
-# Kakao login (ID/PW required)
-npx viruagent-cli login --username <id> --password <pw> --headless
+npx viruagent-cli login --provider tistory --username <kakao_id> --password <pw> --headless
 ```
+> "Login to Tistory" — Agent handles it automatically
 
 ### Naver Blog
 
 ```bash
-# Manual login via browser
-npx viruagent-cli login --provider naver --manual
-
-# Auto login with credentials
 npx viruagent-cli login --provider naver --username <id> --password <pw>
 ```
+> "Login to Naver Blog" — Agent handles it automatically
+
+### Instagram
+
+```bash
+npx viruagent-cli login --provider insta --username <id> --password <pw>
+```
+> "Login to Instagram" — Agent handles it automatically
+>
+> See the [Instagram Guide](docs/guide-instagram.md) for full API reference and rate limit rules.
 
 ## Usage
 
 | Say this | Agent handles |
 |---|---|
-| "Write a blog post" | Login → Categories → Draft → Tags → Publish |
+| "Write a blog post on Tistory" | Login → Categories → Draft → Tags → Publish |
+| "Post to Naver Blog" | Naver login → Categories → Publish |
 | "Save as draft" | Same flow, saves as draft instead |
 | "Show recent posts" | Lists recent published posts |
-| "What categories?" | Lists available categories |
+| "Like all posts from @user" | Login → listPosts → like (with rate limit) |
+| "Analyze and comment on @user's feed" | analyzePost → AI generates comment → comment |
+| "Follow @user" | Login → follow (with delay) |
+| "Check Instagram rate limit" | rate-limit-status → show counters |
 
-Ask the agent for detailed usage or customization help.
+## Platform Guides
+
+- **[Tistory Guide](docs/guide-tistory.en.md)** — Blog publishing, image upload, categories
+- **[Naver Blog Guide](docs/guide-naver.en.md)** — SE Editor, blog publishing, image upload
+- **[Instagram Guide](docs/guide-instagram.en.md)** — 18 API methods, rate limits, AI commenting
 
 ## Supported Environments
 
@@ -100,21 +122,15 @@ Ask the agent for detailed usage or customization help.
 | Any AI agent with bash access | Supported |
 | Node.js | >= 18 |
 
-## Supported Platforms
-
-| Platform | Status |
-| --- | --- |
-| Tistory | Supported |
-| Naver Blog | Supported |
-
 ## Tech Stack
 
 | Area | Tech |
 | --- | --- |
 | CLI Framework | Commander.js |
-| Browser Automation | Playwright (Chromium) |
-| Cookie Decryption | macOS Keychain + AES-128-CBC / Windows DPAPI + AES-256-GCM / CDP fallback |
+| Browser Automation | Playwright (Tistory, Naver only) |
+| Instagram API | Pure HTTP fetch (no browser) |
 | Session Management | JSON file (`~/.viruagent-cli/`) |
+| Rate Limiting | Per-user persistent counters with random delays |
 | Image Search | DuckDuckGo, Wikimedia Commons |
 | Naver Editor | SE Editor component model + RabbitWrite API |
 | Output Format | JSON envelope (`{ ok, data }` / `{ ok, error, hint }`) |

@@ -46,19 +46,27 @@ const runCommand = async (command, opts = {}) => {
   }
 
   if (command === 'install-skill') {
-    const skillSrc = path.resolve(__dirname, '..', 'skills', 'viruagent.md');
-    if (!fs.existsSync(skillSrc)) {
-      throw createError('FILE_NOT_FOUND', 'Skill file not found in package');
-    }
+    const skillsDir = path.resolve(__dirname, '..', 'skills');
+    const skillFiles = ['viruagent.md', 'viruagent-tistory.md', 'viruagent-naver.md', 'viruagent-insta.md'];
 
-    // Detect target: Claude Code (~/.claude/commands/) or custom
     const targetDir = opts.target
       || path.join(os.homedir(), '.claude', 'commands');
     fs.mkdirSync(targetDir, { recursive: true });
 
-    const dest = path.join(targetDir, 'viruagent.md');
-    fs.copyFileSync(skillSrc, dest);
-    return { installed: true, path: dest };
+    const installed = [];
+    for (const file of skillFiles) {
+      const src = path.join(skillsDir, file);
+      if (!fs.existsSync(src)) continue;
+      const dest = path.join(targetDir, file);
+      fs.copyFileSync(src, dest);
+      installed.push(dest);
+    }
+
+    if (installed.length === 0) {
+      throw createError('FILE_NOT_FOUND', 'Skill files not found in package');
+    }
+
+    return { installed: true, paths: installed, count: installed.length };
   }
 
   const manager = createProviderManager();
@@ -149,7 +157,10 @@ const runCommand = async (command, opts = {}) => {
 
     case 'list-posts':
       return withProvider(() =>
-        provider.listPosts({ limit: parseIntOrNull(opts.limit) || 20 })
+        provider.listPosts({
+          username: opts.username || undefined,
+          limit: parseIntOrNull(opts.limit) || 20,
+        })
       )();
 
     case 'read-post': {
@@ -166,6 +177,68 @@ const runCommand = async (command, opts = {}) => {
 
     case 'logout':
       return withProvider(() => provider.logout())();
+
+    // ── Instagram 전용 (다른 프로바이더에도 메서드가 있으면 동작) ──
+
+    case 'get-profile':
+      if (!opts.username) {
+        throw createError('MISSING_PARAM', 'get-profile requires --username');
+      }
+      return withProvider(() => provider.getProfile({ username: opts.username }))();
+
+    case 'get-feed':
+      return withProvider(() => provider.getFeed())();
+
+    case 'like':
+      if (!opts.postId) {
+        throw createError('MISSING_PARAM', 'like requires --post-id');
+      }
+      return withProvider(() => provider.like({ postId: opts.postId }))();
+
+    case 'unlike':
+      if (!opts.postId) {
+        throw createError('MISSING_PARAM', 'unlike requires --post-id');
+      }
+      return withProvider(() => provider.unlike({ postId: opts.postId }))();
+
+    case 'comment':
+      if (!opts.postId || !opts.text) {
+        throw createError('MISSING_PARAM', 'comment requires --post-id and --text');
+      }
+      return withProvider(() => provider.comment({ postId: opts.postId, text: opts.text }))();
+
+    case 'follow':
+      if (!opts.username) {
+        throw createError('MISSING_PARAM', 'follow requires --username');
+      }
+      return withProvider(() => provider.follow({ username: opts.username }))();
+
+    case 'unfollow':
+      if (!opts.username) {
+        throw createError('MISSING_PARAM', 'unfollow requires --username');
+      }
+      return withProvider(() => provider.unfollow({ username: opts.username }))();
+
+    case 'like-comment':
+      if (!opts.commentId) {
+        throw createError('MISSING_PARAM', 'like-comment requires --comment-id');
+      }
+      return withProvider(() => provider.likeComment({ commentId: opts.commentId }))();
+
+    case 'unlike-comment':
+      if (!opts.commentId) {
+        throw createError('MISSING_PARAM', 'unlike-comment requires --comment-id');
+      }
+      return withProvider(() => provider.unlikeComment({ commentId: opts.commentId }))();
+
+    case 'analyze-post':
+      if (!opts.postId) {
+        throw createError('MISSING_PARAM', 'analyze-post requires --post-id');
+      }
+      return withProvider(() => provider.analyzePost({ postId: opts.postId }))();
+
+    case 'rate-limit-status':
+      return withProvider(() => Promise.resolve(provider.rateLimitStatus()))();
 
     default:
       throw createError('UNKNOWN_COMMAND', `Unknown command: ${command}`, 'viruagent-cli --spec');

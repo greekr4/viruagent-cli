@@ -2,13 +2,15 @@ const path = require('path');
 const { getSessionPath } = require('../storage/sessionStore');
 const createTistoryProvider = require('../providers/tistory');
 const createNaverProvider = require('../providers/naver');
+const createInstaProvider = require('../providers/insta');
 
 const providerFactory = {
   tistory: createTistoryProvider,
   naver: createNaverProvider,
+  insta: createInstaProvider,
 };
 
-const providers = ['tistory', 'naver'];
+const providers = ['tistory', 'naver', 'insta'];
 
 const createProviderManager = () => {
   const cache = new Map();
@@ -32,9 +34,10 @@ const createProviderManager = () => {
     return cache.get(normalized);
   };
 
+  const providerNames = { tistory: 'Tistory', naver: 'Naver Blog', insta: 'Instagram' };
   const getAvailableProviders = () => providers.map((provider) => ({
     id: provider,
-    name: provider === 'tistory' ? 'Tistory' : 'Naver Blog',
+    name: providerNames[provider] || provider,
   }));
 
   return { getProvider, getAvailableProviders };

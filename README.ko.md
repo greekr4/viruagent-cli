@@ -18,25 +18,33 @@
   <a href="README.ko.md"><img src="https://img.shields.io/badge/한국어-red" alt="Korean"></a>
 </p>
 
-**AI 에이전트가 블로그를 쓰고, 태그를 만들고, 발행까지 자동으로 처리하는 CLI 도구**
+**AI 에이전트가 블로그 발행부터 SNS 활동까지 자동으로 처리하는 CLI 도구**
 
 사람이 아닌 **AI 에이전트를 위해** 설계되었습니다.
 
+## 지원 플랫폼
+
+| 플랫폼 | 로그인 | 주요 기능 | 가이드 |
+|--------|--------|----------|--------|
+| **Tistory** | Playwright (카카오) | 글 발행, 임시저장, 카테고리, 이미지 업로드 | [가이드](docs/guide-tistory.md) |
+| **Naver Blog** | Playwright (네이버) | 글 발행, 카테고리, SE Editor, 이미지 업로드 | [가이드](docs/guide-naver.md) |
+| **Instagram** | HTTP (브라우저 불필요) | 좋아요, 댓글, 팔로우, 포스팅, 프로필, 피드 | [가이드](docs/guide-instagram.md) |
+
 ## 동작 방식
 
-**CLI + 스킬 기반**으로 작동합니다. CLI 자체는 인터페이스만 담당하고, CLI 호출 흐름, 글 양식 등 스킬 파일(`viruagent.md`)이 AI 에이전트에게 지시합니다.
+**CLI + 스킬 기반**으로 작동합니다. CLI 자체는 인터페이스만 담당하고, 스킬 파일(`viruagent.md`)이 AI 에이전트에게 워크플로우를 지시합니다.
 
 ```
 사용자: "블로그 써줘"
   → 스킬이 에이전트에게 워크플로우 지시
     → 에이전트가 CLI를 호출 (로그인, 카테고리 조회, 발행 등)
 
-사용자: /viruagent "글 써줘"
-  → 스킬 직접 호출
+사용자: "@username 게시물 전부 좋아요하고 댓글 달아줘"
+  → 에이전트가 Instagram 프로바이더 사용 (로그인, listPosts, like, analyzePost, comment)
 ```
 
-- **스킬 파일**: 에이전트가 무엇을, 어떤 순서로 할지 정의 (글 구조, 태그 규칙, 이미지 설정 등)
-- **CLI**: 스킬의 지시를 받아 실제 작업 수행 (로그인, API 호출, 브라우저 자동화)
+- **스킬 파일**: 에이전트가 무엇을, 어떤 순서로 할지 정의
+- **CLI**: 스킬의 지시를 받아 실제 작업 수행
 - **에이전트**: 스킬을 읽고 CLI를 조합하여 자율적으로 실행
 - **커스텀**: 스킬 파일을 직접 수정하여 원하는 대로 동작하도록 설정 가능
 
@@ -44,7 +52,7 @@
 
 ![viru_install](https://github.com/user-attachments/assets/35efb57f-fada-44c0-8dd4-6d586ef33a7c)
 
-아래 내용을 AI 에이전트에게 그대로 복사해서 보여주세요. (AI 에이전트 대상이므로 영어로 작성되어 있습니다)
+아래 내용을 AI 에이전트에게 그대로 복사해서 보여주세요.
 
 ```
 You are installing viruagent-cli, a blog publishing CLI tool. Follow these steps in order.
@@ -67,30 +75,44 @@ Tell the user that viruagent-cli installation is complete.
 ### Tistory
 
 ```bash
-# 카카오 로그인 (ID/PW 필요)
-npx viruagent-cli login --username <id> --password <pw> --headless
+npx viruagent-cli login --provider tistory --username <카카오 ID> --password <비밀번호> --headless
 ```
+> "티스토리 로그인해줘" — 에이전트가 알아서 처리
 
 ### Naver Blog
 
 ```bash
-# 수동 로그인 (브라우저에서 직접 로그인)
-npx viruagent-cli login --provider naver --manual
-
-# 자동 로그인 (ID/PW)
-npx viruagent-cli login --provider naver --username <id> --password <pw>
+npx viruagent-cli login --provider naver --username <네이버 ID> --password <비밀번호>
 ```
+> "네이버 블로그 로그인해줘" — 에이전트가 알아서 처리
+
+### Instagram
+
+```bash
+npx viruagent-cli login --provider insta --username <인스타 ID> --password <비밀번호>
+```
+> "인스타 로그인해줘" — 에이전트가 알아서 처리
+>
+> 전체 API 레퍼런스와 rate limit 규칙은 [Instagram 가이드](docs/guide-instagram.md)를 참고하세요.
 
 ## 사용법
 
 | 이렇게 말하면 | 에이전트가 알아서 |
 |---|---|
-| "블로그 써줘" | 로그인 → 카테고리 → 글 작성 → 태그 → 발행 |
+| "티스토리에 블로그 써줘" | 로그인 → 카테고리 → 글 작성 → 태그 → 발행 |
+| "네이버에 글 올려줘" | 네이버 로그인 → 카테고리 → 발행 |
 | "임시저장해줘" | 같은 흐름, 발행 대신 임시저장 |
 | "최근 글 보여줘" | 최근 발행 글 목록 조회 |
-| "카테고리 뭐 있어?" | 카테고리 목록 조회 |
+| "@user 게시물 전부 좋아요해줘" | 로그인 → listPosts → like (rate limit 자동 적용) |
+| "이 사람 피드 분석해서 댓글 달아줘" | analyzePost → AI 댓글 생성 → comment |
+| "@user 팔로우해줘" | 로그인 → follow (딜레이 자동 적용) |
+| "인스타 rate limit 확인해줘" | rate-limit-status → 카운터 표시 |
 
-자세한 사용법이나 커스터마이징은 에이전트에게 물어보면 안내해줍니다.
+## 플랫폼별 가이드
+
+- **[Tistory 가이드](docs/guide-tistory.md)** — 블로그 발행, 이미지 업로드, 카테고리
+- **[Naver Blog 가이드](docs/guide-naver.md)** — SE Editor, 블로그 발행, 이미지 업로드
+- **[Instagram 가이드](docs/guide-instagram.md)** — 18개 API 메서드, rate limit 규칙, AI 댓글
 
 ## 지원 환경
 
@@ -100,21 +122,15 @@ npx viruagent-cli login --provider naver --username <id> --password <pw>
 | bash 실행 가능한 모든 AI 에이전트 | 지원 |
 | Node.js | >= 18 |
 
-## 지원 플랫폼
-
-| 플랫폼 | 상태 |
-| --- | --- |
-| Tistory | 지원 |
-| Naver Blog | 지원 |
-
 ## 기술 스택
 
 | 영역 | 기술 |
 | --- | --- |
 | CLI 프레임워크 | Commander.js |
-| 브라우저 자동화 | Playwright (Chromium) |
-| 쿠키 복호화 | macOS Keychain + AES-128-CBC / Windows DPAPI + AES-256-GCM / CDP 폴백 |
+| 브라우저 자동화 | Playwright (Tistory, Naver만 사용) |
+| Instagram API | 순수 HTTP fetch (브라우저 불필요) |
 | 세션 관리 | JSON 파일 (`~/.viruagent-cli/`) |
+| Rate Limiting | 유저별 영속 카운터 + 랜덤 딜레이 |
 | 이미지 검색 | DuckDuckGo, Wikimedia Commons |
 | 네이버 에디터 | SE Editor 컴포넌트 모델 + RabbitWrite API |
 | 출력 형식 | JSON envelope (`{ ok, data }` / `{ ok, error, hint }`) |
