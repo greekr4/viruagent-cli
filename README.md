@@ -26,9 +26,9 @@ Designed not for humans, but for **AI agents**.
 
 | Platform | Login | Features | Guide |
 |----------|-------|----------|-------|
-| **Tistory** | Playwright (Kakao) | Publish, Draft, Categories, Image Upload | [Guide](docs/guide-tistory.md) |
-| **Naver Blog** | Playwright (Naver) | Publish, Categories, SE Editor, Image Upload | [Guide](docs/guide-naver.md) |
-| **Instagram** | HTTP (No Browser) | Like, Comment, Follow, Post, Profile, Feed, Rate Limit | [Guide](docs/guide-instagram.md) |
+| **Tistory** | Playwright (Kakao) | Publish, Draft, Categories, Image Upload | [Guide](docs/en/guide-tistory.md) |
+| **Naver Blog** | Playwright (Naver) | Publish, Categories, SE Editor, Image Upload | [Guide](docs/en/guide-naver.md) |
+| **Instagram** | HTTP (No Browser) | Like, Comment, Follow, Post, Profile, Feed, Rate Limit | [Guide](docs/en/guide-instagram.md) |
 
 ## How It Works
 
@@ -93,7 +93,7 @@ npx viruagent-cli login --provider insta --username <id> --password <pw>
 ```
 > "Login to Instagram" — Agent handles it automatically
 >
-> See the [Instagram Guide](docs/guide-instagram.md) for full API reference and rate limit rules.
+> See the [Instagram Guide](docs/en/guide-instagram.md) for full API reference and rate limit rules.
 
 ## Usage
 
@@ -110,9 +110,9 @@ npx viruagent-cli login --provider insta --username <id> --password <pw>
 
 ## Platform Guides
 
-- **[Tistory Guide](docs/guide-tistory.en.md)** — Blog publishing, image upload, categories
-- **[Naver Blog Guide](docs/guide-naver.en.md)** — SE Editor, blog publishing, image upload
-- **[Instagram Guide](docs/guide-instagram.en.md)** — 18 API methods, rate limits, AI commenting
+- **[Tistory Guide](docs/en/guide-tistory.md)** — Blog publishing, image upload, categories
+- **[Naver Blog Guide](docs/en/guide-naver.md)** — SE Editor, blog publishing, image upload
+- **[Instagram Guide](docs/en/guide-instagram.md)** — 18 API methods, rate limits, AI commenting
 
 ## Supported Environments
 
