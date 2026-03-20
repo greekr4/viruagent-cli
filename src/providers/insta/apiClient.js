@@ -545,6 +545,43 @@ const createInstaApiClient = ({ sessionPath }) => {
     return res.json();
   });
 
+  const sendDm = (recipientUserId, text) => withDelay('dm', async () => {
+    const cookies = getCookies();
+    const csrf = getCsrfToken();
+    const body = new URLSearchParams({
+      action: 'send_item',
+      recipient_users: `[[${recipientUserId}]]`,
+      client_context: `6${Date.now()}_${Math.floor(Math.random() * 1000000000)}`,
+      offline_threading_id: Date.now().toString(),
+      text,
+    });
+    const res = await fetch('https://i.instagram.com/api/v1/direct_v2/threads/broadcast/text/', {
+      method: 'POST',
+      headers: {
+        'User-Agent': 'Instagram 317.0.0.34.109 Android (30/11; 420dpi; 1080x2220; samsung; SM-A515F; a51; exynos9611; en_US; 562940699)',
+        'X-IG-App-ID': '567067343352427',
+        'X-CSRFToken': csrf,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Cookie: cookiesToHeader(cookies),
+      },
+      body: body.toString(),
+      redirect: 'manual',
+    });
+    const data = await res.json();
+    if (data.status !== 'ok') {
+      const errCode = data.content?.error_code;
+      if (errCode === 4415001) {
+        throw new Error('DM restricted: Account DM feature is limited. Please open Instagram in browser, go to Direct Messages, and resolve any pending prompts or challenges.');
+      }
+      throw new Error(`DM failed: ${JSON.stringify(data)}`);
+    }
+    return {
+      status: data.status,
+      threadId: data.payload?.thread_id || null,
+      itemId: data.payload?.item_id || null,
+    };
+  });
+
   const getMediaIdFromShortcode = async (shortcode) => {
     const detail = await getPostDetail(shortcode);
     return detail.id;
@@ -666,6 +703,7 @@ const createInstaApiClient = ({ sessionPath }) => {
     uploadPhoto,
     configurePost,
     publishPost,
+    sendDm,
     deletePost,
     resolveChallenge,
     resetState,

@@ -204,6 +204,32 @@ unlikeCommentCmd
   .option('--comment-id <id>', 'Comment ID')
   .action((opts) => execute('unlike-comment', opts));
 
+const sendDmCmd = program
+  .command('send-dm')
+  .description('Send a direct message to a user');
+addProviderOption(sendDmCmd);
+sendDmCmd
+  .option('--username <username>', 'Recipient username')
+  .option('--thread-id <threadId>', 'Existing thread ID')
+  .option('--text <message>', 'Message text')
+  .action((opts) => execute('send-dm', opts));
+
+const listMessagesCmd = program
+  .command('list-messages')
+  .description('List messages in a DM thread (via browser)');
+addProviderOption(listMessagesCmd);
+listMessagesCmd
+  .option('--thread-id <threadId>', 'Thread ID')
+  .action((opts) => execute('list-messages', opts));
+
+const listCommentsCmd = program
+  .command('list-comments')
+  .description('List comments on a post');
+addProviderOption(listCommentsCmd);
+listCommentsCmd
+  .option('--post-id <shortcode>', 'Post shortcode')
+  .action((opts) => execute('list-comments', opts));
+
 const analyzePostCmd = program
   .command('analyze-post')
   .description('Analyze a post (thumbnail + caption + profile)');

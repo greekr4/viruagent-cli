@@ -231,6 +231,27 @@ const runCommand = async (command, opts = {}) => {
       }
       return withProvider(() => provider.unlikeComment({ commentId: opts.commentId }))();
 
+    case 'send-dm':
+      if (!opts.username && !opts.threadId) {
+        throw createError('MISSING_PARAM', 'send-dm requires --username or --thread-id');
+      }
+      if (!opts.text) {
+        throw createError('MISSING_PARAM', 'send-dm requires --text');
+      }
+      return withProvider(() => provider.sendDm({ username: opts.username, threadId: opts.threadId, text: opts.text }))();
+
+    case 'list-messages':
+      if (!opts.threadId) {
+        throw createError('MISSING_PARAM', 'list-messages requires --thread-id');
+      }
+      return withProvider(() => provider.listMessages({ threadId: opts.threadId }))();
+
+    case 'list-comments':
+      if (!opts.postId) {
+        throw createError('MISSING_PARAM', 'list-comments requires --post-id');
+      }
+      return withProvider(() => provider.listComments({ postId: opts.postId }))();
+
     case 'analyze-post':
       if (!opts.postId) {
         throw createError('MISSING_PARAM', 'analyze-post requires --post-id');
