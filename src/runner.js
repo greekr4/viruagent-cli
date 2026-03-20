@@ -47,26 +47,36 @@ const runCommand = async (command, opts = {}) => {
 
   if (command === 'install-skill') {
     const skillsDir = path.resolve(__dirname, '..', 'skills');
-    const skillFiles = ['viruagent.md', 'viruagent-tistory.md', 'viruagent-naver.md', 'viruagent-insta.md'];
-
     const targetDir = opts.target
       || path.join(os.homedir(), '.claude', 'commands');
-    fs.mkdirSync(targetDir, { recursive: true });
 
-    const installed = [];
-    for (const file of skillFiles) {
-      const src = path.join(skillsDir, file);
-      if (!fs.existsSync(src)) continue;
-      const dest = path.join(targetDir, file);
-      fs.copyFileSync(src, dest);
-      installed.push(dest);
+    // Install only the main router skill as /viruagent
+    const routerSrc = path.join(skillsDir, 'va-shared', 'SKILL.md');
+    if (!fs.existsSync(routerSrc)) {
+      throw createError('FILE_NOT_FOUND', 'Router skill (va-shared/SKILL.md) not found');
     }
 
-    if (installed.length === 0) {
-      throw createError('FILE_NOT_FOUND', 'Skill files not found in package');
-    }
+    const destDir = path.join(targetDir, 'viruagent');
+    fs.mkdirSync(destDir, { recursive: true });
+    const dest = path.join(destDir, 'SKILL.md');
+    fs.copyFileSync(routerSrc, dest);
 
-    return { installed: true, paths: installed, count: installed.length };
+    // Inject actual skills directory path into the installed SKILL.md
+    const skillsAbsPath = skillsDir;
+    let content = fs.readFileSync(dest, 'utf-8');
+    content = content.replace(
+      'SKILLS_DIR: <viruagent-cli 설치 경로>/skills/',
+      `SKILLS_DIR: ${skillsAbsPath}/`
+    );
+    fs.writeFileSync(dest, content, 'utf-8');
+
+    return {
+      installed: true,
+      paths: [dest],
+      count: 1,
+      skillsDir: skillsAbsPath,
+      note: 'Only /viruagent is registered as a slash command. Sub-skills are loaded on demand from ' + skillsAbsPath,
+    };
   }
 
   const manager = createProviderManager();
@@ -110,7 +120,7 @@ const runCommand = async (command, opts = {}) => {
 
     case 'publish': {
       const content = readContent(opts);
-      if (!content) {
+      if (!content && providerName !== 'insta') {
         throw createError('MISSING_CONTENT', 'publish requires --content or --content-file', 'viruagent-cli publish --spec');
       }
       return withProvider(() =>

@@ -225,12 +225,33 @@ const createInstaProvider = ({ sessionPath }) => {
       });
     },
 
-    async publish({ imageUrl, imagePath, caption = '' } = {}) {
+    async publish({ imageUrl, imagePath, caption = '', content, title, relatedImageKeywords = [], imageUrls = [] } = {}) {
       return withProviderSession(async () => {
-        if (!imageUrl && !imagePath) {
-          throw new Error('Either imageUrl or imagePath is required.');
+        // Use content as caption if caption is not provided
+        const finalCaption = caption || content || '';
+
+        // Resolve image: explicit imageUrl/imagePath > imageUrls > relatedImageKeywords search
+        let resolvedImageUrl = imageUrl;
+        if (!resolvedImageUrl && !imagePath) {
+          if (imageUrls.length > 0) {
+            resolvedImageUrl = imageUrls[0];
+          } else if (relatedImageKeywords.length > 0) {
+            const { buildKeywordImageCandidates } = require('../tistory/imageSources');
+            for (const keyword of relatedImageKeywords) {
+              const candidates = await buildKeywordImageCandidates(keyword);
+              if (candidates.length > 0) {
+                resolvedImageUrl = candidates[0];
+                break;
+              }
+            }
+          }
         }
-        const result = await instaApi.publishPost({ imageUrl, imagePath, caption });
+
+        if (!resolvedImageUrl && !imagePath) {
+          throw new Error('No image found. Provide --image-urls, --related-image-keywords, or use imageUrl/imagePath.');
+        }
+
+        const result = await instaApi.publishPost({ imageUrl: resolvedImageUrl, imagePath, caption: finalCaption });
         return {
           provider: 'insta',
           mode: 'publish',
