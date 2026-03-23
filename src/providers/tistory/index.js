@@ -12,7 +12,7 @@ const {
 } = require('./utils');
 const { normalizeThumbnailForPublish } = require('./imageNormalization');
 const { enrichContentWithUploadedImages, resolveMandatoryThumbnail } = require('./imageEnrichment');
-const { createWithProviderSession } = require('./session');
+const { createWithProviderSession, checkAndIncrementRateLimit, getRateLimitStatus } = require('./session');
 const { createAskForAuthentication } = require('./auth');
 
 const createTistoryProvider = ({ sessionPath, account }) => {
@@ -95,6 +95,7 @@ const createTistoryProvider = ({ sessionPath, account }) => {
 
     async publish(payload) {
       return withProviderSession(async () => {
+        checkAndIncrementRateLimit(sessionPath, 'publish');
         const title = payload.title || 'Untitled';
         const rawContent = payload.content || '';
         const visibility = mapVisibility(payload.visibility);
@@ -526,6 +527,14 @@ const createTistoryProvider = ({ sessionPath, account }) => {
           includeDraft: Boolean(includeDraft),
         };
       });
+    },
+
+    rateLimitStatus() {
+      return {
+        provider: 'tistory',
+        mode: 'rateLimitStatus',
+        ...getRateLimitStatus(sessionPath),
+      };
     },
 
     async logout() {

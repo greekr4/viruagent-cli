@@ -5,6 +5,46 @@ const { sleep, readCredentialsFromEnv, parseSessionError, buildLoginErrorMessage
 const { clickKakaoAccountContinue } = require('./browserHelpers');
 const { extractAllCookies, filterCookies, cookiesToSessionFormat } = require('../chromeManager');
 
+// ── Rate Limit (일일 발행 제한) ──
+const DAILY_LIMIT = { publish: 15 };
+
+const readSessionFile = (sessionPath) => {
+  if (!fs.existsSync(sessionPath)) return null;
+  try { return JSON.parse(fs.readFileSync(sessionPath, 'utf-8')); } catch { return null; }
+};
+const writeSessionFile = (sessionPath, data) => {
+  fs.mkdirSync(path.dirname(sessionPath), { recursive: true });
+  fs.writeFileSync(sessionPath, JSON.stringify(data, null, 2), 'utf-8');
+};
+
+const checkAndIncrementRateLimit = (sessionPath, type) => {
+  const raw = readSessionFile(sessionPath) || {};
+  if (!raw.rateLimits) raw.rateLimits = {};
+  const c = raw.rateLimits[type] || { daily: 0, dayStart: Date.now() };
+
+  const now = Date.now();
+  if (now - c.dayStart > 86400000) { c.daily = 0; c.dayStart = now; }
+
+  const dailyMax = DAILY_LIMIT[type];
+  if (dailyMax && c.daily >= dailyMax) {
+    throw new Error(`daily_limit: ${type} exceeded daily limit of ${dailyMax}. Try again tomorrow.`);
+  }
+
+  c.daily++;
+  raw.rateLimits[type] = { ...c, savedAt: new Date().toISOString() };
+  writeSessionFile(sessionPath, raw);
+};
+
+const getRateLimitStatus = (sessionPath) => {
+  const raw = readSessionFile(sessionPath) || {};
+  const result = {};
+  for (const [type, max] of Object.entries(DAILY_LIMIT)) {
+    const c = raw.rateLimits?.[type] || { daily: 0 };
+    result[type] = { daily: `${c.daily}/${max}` };
+  }
+  return result;
+};
+
 const isLoggedInByCookies = async (context, page) => {
   try {
     // Use CDP to get all cookies including httpOnly (TSSESSION)
@@ -114,4 +154,6 @@ module.exports = {
   waitForLoginFinish,
   persistTistorySession,
   createWithProviderSession,
+  checkAndIncrementRateLimit,
+  getRateLimitStatus,
 };
