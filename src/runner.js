@@ -86,9 +86,10 @@ const runCommand = async (command, opts = {}) => {
   }
 
   const providerName = opts.provider || 'tistory';
+  const account = opts.account || undefined;
   let provider;
   try {
-    provider = manager.getProvider(providerName);
+    provider = manager.getProvider(providerName, account);
   } catch {
     throw createError(
       'PROVIDER_NOT_FOUND',

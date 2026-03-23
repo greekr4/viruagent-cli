@@ -27,9 +27,11 @@ const writeJson = (target, data) => {
   fs.writeFileSync(target, JSON.stringify(data, null, 2), 'utf-8');
 };
 
-const getSessionPath = (provider) => {
+const getSessionPath = (provider, account) => {
   ensureDir(SESSION_DIR);
-  return path.join(SESSION_DIR, `${normalizeProvider(provider)}-session.json`);
+  const base = normalizeProvider(provider);
+  const suffix = account ? `-${String(account).toLowerCase().replace(/[^a-z0-9._-]/g, '_')}` : '';
+  return path.join(SESSION_DIR, `${base}${suffix}-session.json`);
 };
 
 const getProvidersMeta = () => {
@@ -37,25 +39,32 @@ const getProvidersMeta = () => {
   return readJson(META_FILE);
 };
 
-const saveProviderMeta = (provider, patch) => {
+const metaKey = (provider, account) => {
+  const base = normalizeProvider(provider);
+  return account ? `${base}:${String(account).toLowerCase()}` : base;
+};
+
+const saveProviderMeta = (provider, patch, account) => {
   const meta = getProvidersMeta();
-  meta[normalizeProvider(provider)] = {
-    ...(meta[normalizeProvider(provider)] || {}),
+  const key = metaKey(provider, account);
+  meta[key] = {
+    ...(meta[key] || {}),
     ...patch,
     provider: normalizeProvider(provider),
+    ...(account ? { account: String(account).toLowerCase() } : {}),
     updatedAt: new Date().toISOString(),
   };
   writeJson(META_FILE, meta);
 };
 
-const getProviderMeta = (provider) => {
+const getProviderMeta = (provider, account) => {
   const meta = getProvidersMeta();
-  return meta[normalizeProvider(provider)] || null;
+  return meta[metaKey(provider, account)] || null;
 };
 
-const clearProviderMeta = (provider) => {
+const clearProviderMeta = (provider, account) => {
   const meta = getProvidersMeta();
-  delete meta[normalizeProvider(provider)];
+  delete meta[metaKey(provider, account)];
   writeJson(META_FILE, meta);
 };
 

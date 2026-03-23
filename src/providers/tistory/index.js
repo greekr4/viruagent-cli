@@ -15,7 +15,7 @@ const { enrichContentWithUploadedImages, resolveMandatoryThumbnail } = require('
 const { createWithProviderSession } = require('./session');
 const { createAskForAuthentication } = require('./auth');
 
-const createTistoryProvider = ({ sessionPath }) => {
+const createTistoryProvider = ({ sessionPath, account }) => {
   const tistoryApi = createTistoryApiClient({ sessionPath });
 
   const pending2faResult = (mode = 'kakao') => ({
@@ -33,7 +33,7 @@ const createTistoryProvider = ({ sessionPath }) => {
     pending2faResult,
   });
 
-  const withProviderSession = createWithProviderSession(askForAuthentication);
+  const withProviderSession = createWithProviderSession(askForAuthentication, account);
 
   return {
     id: 'tistory',
@@ -49,7 +49,7 @@ const createTistoryProvider = ({ sessionPath }) => {
             blogName,
             blogUrl: `https://${blogName}.tistory.com`,
             sessionPath,
-            metadata: getProviderMeta('tistory') || {},
+            metadata: getProviderMeta('tistory', account) || {},
           };
         } catch (error) {
           return {
@@ -57,7 +57,7 @@ const createTistoryProvider = ({ sessionPath }) => {
             loggedIn: false,
             sessionPath,
             error: error.message,
-            metadata: getProviderMeta('tistory') || {},
+            metadata: getProviderMeta('tistory', account) || {},
           };
         }
       });
@@ -89,7 +89,7 @@ const createTistoryProvider = ({ sessionPath }) => {
         blogName: result.blogName,
         blogUrl: result.blogUrl,
         sessionPath: result.sessionPath,
-      });
+      }, account);
       return result;
     },
 
@@ -529,7 +529,7 @@ const createTistoryProvider = ({ sessionPath }) => {
     },
 
     async logout() {
-      clearProviderMeta('tistory');
+      clearProviderMeta('tistory', account);
       return {
         provider: 'tistory',
         loggedOut: true,

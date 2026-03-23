@@ -3,19 +3,27 @@ const path = require('path');
 const { saveProviderMeta } = require('../../storage/sessionStore');
 const { sleep, readCredentialsFromEnv, parseSessionError, buildLoginErrorMessage } = require('./utils');
 const { clickKakaoAccountContinue } = require('./browserHelpers');
+const { extractAllCookies, filterCookies, cookiesToSessionFormat } = require('../chromeManager');
 
-const isLoggedInByCookies = async (context) => {
-  const cookies = await context.cookies('https://www.tistory.com');
-  return cookies.some((cookie) => {
-    const name = cookie.name.toLowerCase();
-    return name.includes('tistory') || name.includes('access') || name.includes('login');
-  });
+const isLoggedInByCookies = async (context, page) => {
+  try {
+    // Use CDP to get all cookies including httpOnly (TSSESSION)
+    const all = await extractAllCookies(context, page);
+    return all.some((c) => c.domain.includes('tistory') && c.name === 'TSSESSION');
+  } catch {
+    // Fallback to context.cookies if CDP fails
+    const cookies = await context.cookies('https://www.tistory.com');
+    return cookies.some((cookie) => {
+      const name = cookie.name.toLowerCase();
+      return name.includes('tistory') || name.includes('access') || name.includes('login');
+    });
+  }
 };
 
 const waitForLoginFinish = async (page, context, timeoutMs = 45000) => {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (await isLoggedInByCookies(context)) {
+    if (await isLoggedInByCookies(context, page)) {
       return true;
     }
 
@@ -33,16 +41,11 @@ const waitForLoginFinish = async (page, context, timeoutMs = 45000) => {
   return false;
 };
 
-const persistTistorySession = async (context, targetSessionPath) => {
-  const cookies = await context.cookies('https://www.tistory.com');
-  const sanitized = cookies.map((cookie) => ({
-    ...cookie,
-    expires: Number(cookie.expires || -1),
-    size: undefined,
-    partitionKey: undefined,
-    sourcePort: undefined,
-    sourceScheme: undefined,
-  }));
+const persistTistorySession = async (context, page, targetSessionPath) => {
+  // Use CDP Network.getAllCookies to capture httpOnly cookies (e.g. TSSESSION)
+  const all = await extractAllCookies(context, page);
+  const tistoryCookies = filterCookies(all, ['tistory.com']);
+  const sanitized = cookiesToSessionFormat(tistoryCookies);
 
   const payload = {
     cookies: sanitized,
@@ -60,16 +63,13 @@ const persistTistorySession = async (context, targetSessionPath) => {
  * withProviderSession factory.
  * Receives askForAuthentication via dependency injection to avoid scope issues.
  */
-const createWithProviderSession = (askForAuthentication) => async (fn) => {
+const createWithProviderSession = (askForAuthentication, account) => async (fn) => {
   const credentials = readCredentialsFromEnv();
   const hasCredentials = Boolean(credentials.username && credentials.password);
 
   try {
     const result = await fn();
-    saveProviderMeta('tistory', {
-      loggedIn: true,
-      lastValidatedAt: new Date().toISOString(),
-    });
+    saveProviderMeta('tistory', { loggedIn: true, lastValidatedAt: new Date().toISOString() }, account);
     return result;
   } catch (error) {
     if (!parseSessionError(error) || !hasCredentials) {
@@ -91,7 +91,7 @@ const createWithProviderSession = (askForAuthentication) => async (fn) => {
         sessionPath: loginResult.sessionPath,
         lastRefreshedAt: new Date().toISOString(),
         lastError: null,
-      });
+      }, account);
 
       if (!loginResult.loggedIn) {
         throw new Error(loginResult.message || 'Login status could not be confirmed after session refresh.');
@@ -103,7 +103,7 @@ const createWithProviderSession = (askForAuthentication) => async (fn) => {
         loggedIn: false,
         lastError: buildLoginErrorMessage(reloginError),
         lastValidatedAt: new Date().toISOString(),
-      });
+      }, account);
       throw reloginError;
     }
   }

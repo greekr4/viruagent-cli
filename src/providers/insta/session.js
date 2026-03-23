@@ -61,16 +61,13 @@ const validateInstaSession = (sessionPath) => {
 const cookiesToHeader = (cookies) =>
   cookies.map((c) => `${c.name}=${c.value}`).join('; ');
 
-const createInstaWithProviderSession = (askForAuthentication) => async (fn) => {
+const createInstaWithProviderSession = (askForAuthentication, account) => async (fn) => {
   const credentials = readInstaCredentials();
   const hasCredentials = Boolean(credentials.username && credentials.password);
 
   try {
     const result = await fn();
-    saveProviderMeta('insta', {
-      loggedIn: true,
-      lastValidatedAt: new Date().toISOString(),
-    });
+    saveProviderMeta('insta', { loggedIn: true, lastValidatedAt: new Date().toISOString() }, account);
     return result;
   } catch (error) {
     if (!parseInstaSessionError(error) || !hasCredentials) {
@@ -89,7 +86,7 @@ const createInstaWithProviderSession = (askForAuthentication) => async (fn) => {
         sessionPath: loginResult.sessionPath,
         lastRefreshedAt: new Date().toISOString(),
         lastError: null,
-      });
+      }, account);
 
       if (!loginResult.loggedIn) {
         throw new Error(loginResult.message || 'Login status could not be confirmed after session refresh.');
@@ -101,7 +98,7 @@ const createInstaWithProviderSession = (askForAuthentication) => async (fn) => {
         loggedIn: false,
         lastError: buildLoginErrorMessage(reloginError),
         lastValidatedAt: new Date().toISOString(),
-      });
+      }, account);
       throw reloginError;
     }
   }

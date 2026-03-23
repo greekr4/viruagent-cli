@@ -10,7 +10,7 @@ const { collectAndUploadImages } = require('./imageUpload');
 const { createNaverWithProviderSession } = require('./session');
 const { createAskForAuthentication } = require('./auth');
 
-const createNaverProvider = ({ sessionPath }) => {
+const createNaverProvider = ({ sessionPath, account }) => {
   const naverApi = createNaverApiClient({ sessionPath });
 
   const askForAuthentication = createAskForAuthentication({
@@ -18,7 +18,7 @@ const createNaverProvider = ({ sessionPath }) => {
     naverApi,
   });
 
-  const withProviderSession = createNaverWithProviderSession(askForAuthentication);
+  const withProviderSession = createNaverWithProviderSession(askForAuthentication, account);
 
   return {
     id: 'naver',
@@ -34,7 +34,7 @@ const createNaverProvider = ({ sessionPath }) => {
             blogId,
             blogUrl: `https://blog.naver.com/${blogId}`,
             sessionPath,
-            metadata: getProviderMeta('naver') || {},
+            metadata: getProviderMeta('naver', account) || {},
           };
         } catch (error) {
           return {
@@ -42,7 +42,7 @@ const createNaverProvider = ({ sessionPath }) => {
             loggedIn: false,
             sessionPath,
             error: error.message,
-            metadata: getProviderMeta('naver') || {},
+            metadata: getProviderMeta('naver', account) || {},
           };
         }
       });
@@ -62,17 +62,13 @@ const createNaverProvider = ({ sessionPath }) => {
         password: password || creds.password,
       };
 
-      if (!resolved.manual && (!resolved.username || !resolved.password)) {
-        throw new Error('Naver auto-login requires username/password. Set the NAVER_USERNAME / NAVER_PASSWORD environment variables or use --manual mode.');
-      }
-
       const result = await askForAuthentication(resolved);
       saveProviderMeta('naver', {
         loggedIn: result.loggedIn,
         blogId: result.blogId,
         blogUrl: result.blogUrl,
         sessionPath: result.sessionPath,
-      });
+      }, account);
       return result;
     },
 
@@ -221,7 +217,7 @@ const createNaverProvider = ({ sessionPath }) => {
     },
 
     async logout() {
-      clearProviderMeta('naver');
+      clearProviderMeta('naver', account);
       return {
         provider: 'naver',
         loggedOut: true,

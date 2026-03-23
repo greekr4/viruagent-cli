@@ -1,9 +1,14 @@
 const fs = require('fs');
 const path = require('path');
-const { chromium } = require('playwright');
 const { readNaverCredentials, sleep } = require('./utils');
 const { isLoggedInByCookies, persistNaverSession } = require('./session');
 const { NAVER_LOGIN_SELECTORS, NAVER_LOGIN_ERROR_PATTERNS } = require('./selectors');
+const {
+  CHROME_PROFILE_DIR,
+  launchChrome,
+  connectChrome,
+} = require('../chromeManager');
+const NAVER_PROFILE_DIR = path.join(CHROME_PROFILE_DIR, 'naver');
 
 const ANTI_DETECTION_SCRIPT = `
   Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
@@ -15,7 +20,7 @@ const ANTI_DETECTION_SCRIPT = `
 const waitForNaverLoginFinish = async (page, context, timeoutMs = 45000) => {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (await isLoggedInByCookies(context)) return true;
+    if (await isLoggedInByCookies(context, page)) return true;
 
     const url = page.url();
     if (url.includes('naver.com') && !url.includes('nid.naver.com/nidlogin')) return true;
@@ -75,27 +80,37 @@ const createAskForAuthentication = ({ sessionPath, naverApi }) => async ({
   const resolvedUsername = username || readNaverCredentials().username;
   const resolvedPassword = password || readNaverCredentials().password;
 
-  if (!manual && (!resolvedUsername || !resolvedPassword)) {
-    throw new Error('Naver login requires id/pw. Set the NAVER_USERNAME/NAVER_PASSWORD environment variables or use --manual mode.');
-  }
-
-  const browser = await chromium.launch({
-    headless: manual ? false : headless,
-  });
-
-  const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    viewport: { width: 1366, height: 768 },
-    locale: 'ko-KR',
-    timezoneId: 'Asia/Seoul',
-  });
-
-  await context.addInitScript(ANTI_DETECTION_SCRIPT);
-  const page = context.pages()[0] || (await context.newPage());
+  // Launch real Chrome with persistent profile + CDP
+  // TIP: openchrome (npx openchrome-mcp setup) skips 2FA by reusing existing sessions.
+  const port = await launchChrome(NAVER_PROFILE_DIR);
+  const { browser, context, page } = await connectChrome(port);
 
   try {
+    // Check if already logged in (openchrome profile may have active session)
+    // Navigate to myinfo — redirects to login if not authenticated, stays if logged in
+    await page.goto('https://nid.naver.com/user2/help/myInfo', { waitUntil: 'domcontentloaded' });
+    await sleep(1000);
+
+    const afterUrl = page.url();
+    if (!afterUrl.includes('nidlogin') && !afterUrl.includes('nid.naver.com/nidlogin')) {
+      await persistNaverSession(context, page, sessionPath);
+      naverApi.resetState();
+      const blogId = await naverApi.initBlog();
+      return {
+        provider: 'naver',
+        loggedIn: true,
+        blogId,
+        blogUrl: `https://blog.naver.com/${blogId}`,
+        sessionPath,
+      };
+    }
+
     await page.goto('https://nid.naver.com/nidlogin.login', { waitUntil: 'domcontentloaded' });
-    await sleep(1500);
+    await sleep(1000);
+
+    if (!manual && (!resolvedUsername || !resolvedPassword)) {
+      throw new Error('Naver login requires id/pw. Set the NAVER_USERNAME/NAVER_PASSWORD environment variables or use --manual mode.');
+    }
 
     let loginSuccess = false;
 
@@ -157,7 +172,7 @@ const createAskForAuthentication = ({ sessionPath, naverApi }) => async ({
       throw new Error('Naver login failed. Please verify your id/password or use --manual mode.');
     }
 
-    await persistNaverSession(context, sessionPath);
+    await persistNaverSession(context, page, sessionPath);
 
     naverApi.resetState();
     const blogId = await naverApi.initBlog();
@@ -169,9 +184,8 @@ const createAskForAuthentication = ({ sessionPath, naverApi }) => async ({
       sessionPath,
     };
   } finally {
-    if (browser) {
-      await browser.close().catch(() => {});
-    }
+    // Don't close browser — keep Chrome running with persistent profile
+    await browser.close().catch(() => {});
   }
 };
 

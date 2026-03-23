@@ -5,12 +5,12 @@ const { readInstaCredentials } = require('./utils');
 const { createInstaWithProviderSession } = require('./session');
 const { createAskForAuthentication } = require('./auth');
 
-const createInstaProvider = ({ sessionPath }) => {
+const createInstaProvider = ({ sessionPath, account }) => {
   const instaApi = createInstaApiClient({ sessionPath });
 
   const askForAuthentication = createAskForAuthentication({ sessionPath });
 
-  const withProviderSession = createInstaWithProviderSession(askForAuthentication);
+  const withProviderSession = createInstaWithProviderSession(askForAuthentication, account);
   const smart = createSmartComment(instaApi);
 
   return {
@@ -29,7 +29,7 @@ const createInstaProvider = ({ sessionPath }) => {
             userId,
             hasSession: Boolean(sessionid?.value),
             sessionPath,
-            metadata: getProviderMeta('insta') || {},
+            metadata: getProviderMeta('insta', account) || {},
           };
         } catch (error) {
           return {
@@ -37,7 +37,7 @@ const createInstaProvider = ({ sessionPath }) => {
             loggedIn: false,
             sessionPath,
             error: error.message,
-            metadata: getProviderMeta('insta') || {},
+            metadata: getProviderMeta('insta', account) || {},
           };
         }
       });
@@ -65,7 +65,7 @@ const createInstaProvider = ({ sessionPath }) => {
         userId: result.userId,
         username: result.username,
         sessionPath: result.sessionPath,
-      });
+      }, account);
 
       return result;
     },
@@ -509,7 +509,7 @@ const createInstaProvider = ({ sessionPath }) => {
     },
 
     async logout() {
-      clearProviderMeta('insta');
+      clearProviderMeta('insta', account);
       return {
         provider: 'insta',
         loggedOut: true,

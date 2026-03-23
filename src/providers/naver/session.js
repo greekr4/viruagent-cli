@@ -2,42 +2,39 @@ const fs = require('fs');
 const path = require('path');
 const { saveProviderMeta } = require('../../storage/sessionStore');
 const { readNaverCredentials, parseNaverSessionError, buildLoginErrorMessage } = require('./utils');
+const { extractAllCookies, filterCookies, cookiesToSessionFormat } = require('../chromeManager');
 
 const NAVER_COOKIE_DOMAINS = ['https://www.naver.com', 'https://nid.naver.com', 'https://blog.naver.com'];
 
-const isLoggedInByCookies = async (context) => {
-  for (const domain of NAVER_COOKIE_DOMAINS) {
-    const cookies = await context.cookies(domain);
-    const hasAuth = cookies.some((c) => c.name === 'NID_AUT' || c.name === 'NID_SES');
-    if (hasAuth) return true;
+const isLoggedInByCookies = async (context, page) => {
+  try {
+    const all = await extractAllCookies(context, page);
+    return all.some((c) => c.domain.includes('naver.com') && (c.name === 'NID_AUT' || c.name === 'NID_SES'));
+  } catch {
+    for (const domain of NAVER_COOKIE_DOMAINS) {
+      const cookies = await context.cookies(domain);
+      const hasAuth = cookies.some((c) => c.name === 'NID_AUT' || c.name === 'NID_SES');
+      if (hasAuth) return true;
+    }
+    return false;
   }
-  return false;
 };
 
-const persistNaverSession = async (context, targetSessionPath) => {
-  const allCookies = [];
-  for (const domain of NAVER_COOKIE_DOMAINS) {
-    const cookies = await context.cookies(domain);
-    allCookies.push(...cookies);
-  }
+const persistNaverSession = async (context, page, targetSessionPath) => {
+  // Use CDP Network.getAllCookies to capture httpOnly cookies (e.g. NID_AUT)
+  const all = await extractAllCookies(context, page);
+  const naverCookies = filterCookies(all, ['naver.com']);
 
   // Deduplicate by name+domain
   const seen = new Set();
-  const unique = allCookies.filter((c) => {
+  const unique = naverCookies.filter((c) => {
     const key = `${c.name}@${c.domain}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
 
-  const sanitized = unique.map((cookie) => ({
-    ...cookie,
-    expires: Number(cookie.expires || -1),
-    size: undefined,
-    partitionKey: undefined,
-    sourcePort: undefined,
-    sourceScheme: undefined,
-  }));
+  const sanitized = cookiesToSessionFormat(unique);
 
   const payload = {
     cookies: sanitized,
@@ -62,16 +59,13 @@ const validateNaverSession = async (sessionPath) => {
     cookies.some((c) => c.name === 'NID_SES' && c.value);
 };
 
-const createNaverWithProviderSession = (askForAuthentication) => async (fn) => {
+const createNaverWithProviderSession = (askForAuthentication, account) => async (fn) => {
   const credentials = readNaverCredentials();
   const hasCredentials = Boolean(credentials.username && credentials.password);
 
   try {
     const result = await fn();
-    saveProviderMeta('naver', {
-      loggedIn: true,
-      lastValidatedAt: new Date().toISOString(),
-    });
+    saveProviderMeta('naver', { loggedIn: true, lastValidatedAt: new Date().toISOString() }, account);
     return result;
   } catch (error) {
     if (!parseNaverSessionError(error) || !hasCredentials) {
@@ -93,7 +87,7 @@ const createNaverWithProviderSession = (askForAuthentication) => async (fn) => {
         sessionPath: loginResult.sessionPath,
         lastRefreshedAt: new Date().toISOString(),
         lastError: null,
-      });
+      }, account);
 
       if (!loginResult.loggedIn) {
         throw new Error(loginResult.message || 'Login status could not be verified after session refresh.');
@@ -105,7 +99,7 @@ const createNaverWithProviderSession = (askForAuthentication) => async (fn) => {
         loggedIn: false,
         lastError: buildLoginErrorMessage(reloginError),
         lastValidatedAt: new Date().toISOString(),
-      });
+      }, account);
       throw reloginError;
     }
   }

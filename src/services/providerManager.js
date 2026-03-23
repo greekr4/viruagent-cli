@@ -15,23 +15,25 @@ const providers = ['tistory', 'naver', 'insta'];
 const createProviderManager = () => {
   const cache = new Map();
 
-  const getProvider = (provider = 'tistory') => {
+  const getProvider = (provider = 'tistory', account) => {
     const normalized = String(provider || 'tistory').toLowerCase();
     if (!providerFactory[normalized]) {
       throw new Error(`Unsupported provider: ${provider}. Available options: ${providers.join(', ')}`);
     }
 
-    if (!cache.has(normalized)) {
-      const sessionPath = getSessionPath(normalized);
+    const cacheKey = account ? `${normalized}:${String(account).toLowerCase()}` : normalized;
+    if (!cache.has(cacheKey)) {
+      const sessionPath = getSessionPath(normalized, account);
       const options = {
         provider: normalized,
         sessionPath,
+        account: account || undefined,
       };
       const providerInstance = providerFactory[normalized](options);
-      cache.set(normalized, providerInstance);
+      cache.set(cacheKey, providerInstance);
     }
 
-    return cache.get(normalized);
+    return cache.get(cacheKey);
   };
 
   const providerNames = { tistory: 'Tistory', naver: 'Naver Blog', insta: 'Instagram' };
