@@ -98,6 +98,14 @@ INSTA_USERNAME=
 INSTA_PASSWORD=
 ```
 
+## 배포
+
+**배포는 GitHub Actions로 자동화되어 있음. 절대 `npm publish` 직접 실행 금지.**
+
+- `main` 브랜치에 push → GitHub Actions가 자동으로 npm 배포
+- 버전 bump: `npm version patch/minor/major` 후 push
+- 워크플로우 파일: `.github/workflows/`
+
 ## 개발 컨벤션
 
 - CommonJS (`require`/`module.exports`)
