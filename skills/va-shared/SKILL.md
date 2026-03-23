@@ -64,6 +64,7 @@ SKILLS_DIR: <viruagent-cli 설치 경로>/skills/
 | va-naver-posts | `va-naver-posts/SKILL.md` | 글 목록/읽기 |
 | va-insta | `va-insta/SKILL.md` | Instagram 개요 + 레이트리밋 |
 | va-insta-login | `va-insta-login/SKILL.md` | 로그인 + 챌린지 |
+| va-insta-publish | `va-insta-publish/SKILL.md` | 게시물 발행 + 어그로 전략 |
 | va-insta-like | `va-insta-like/SKILL.md` | 좋아요 |
 | va-insta-comment | `va-insta-comment/SKILL.md` | 댓글 |
 | va-insta-follow | `va-insta-follow/SKILL.md` | 팔로우/언팔 |

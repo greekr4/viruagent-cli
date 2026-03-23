@@ -18,6 +18,7 @@ Instagram 자동화를 위한 viruagent-cli 가이드. 항상 `--provider insta`
 | 명령 | 스킬 | 설명 |
 |------|------|------|
 | login | va-insta-login | 로그인 + 챌린지 해결 |
+| publish | va-insta-publish | 게시물 발행 (어그로 전략 포함) |
 | like, unlike | va-insta-like | 좋아요/좋아요 취소 |
 | comment | va-insta-comment | 댓글 작성 |
 | follow, unfollow | va-insta-follow | 팔로우/언팔로우 |
@@ -61,4 +62,4 @@ INSTA_PASSWORD=
 
 ## See Also
 
-va-shared, va-insta-login, va-insta-like, va-insta-comment, va-insta-follow, va-insta-dm, va-insta-feed
+va-shared, va-insta-login, va-insta-publish, va-insta-like, va-insta-comment, va-insta-follow, va-insta-dm, va-insta-feed
