@@ -29,6 +29,7 @@ Designed not for humans, but for **AI agents**.
 | **Tistory** | Playwright (Kakao) | Publish, Draft, Categories, Image Upload | [Guide](docs/en/guide-tistory.md) |
 | **Naver Blog** | Playwright (Naver) | Publish, Categories, SE Editor, Image Upload | [Guide](docs/en/guide-naver.md) |
 | **Instagram** | HTTP (No Browser) | Like, Comment, Follow, Post, Profile, Feed, Rate Limit | [Guide](docs/en/guide-instagram.md) |
+| **X (Twitter)** | HTTP (Cookie Auth) | Tweet, Like, Retweet, Follow, Search, Timeline, Media Upload | [Guide](docs/en/guide-x.md) |
 
 ## How It Works
 
@@ -95,6 +96,15 @@ npx viruagent-cli login --provider insta --username <id> --password <pw>
 >
 > See the [Instagram Guide](docs/en/guide-instagram.md) for full API reference and rate limit rules.
 
+### X (Twitter)
+
+```bash
+npx viruagent-cli login --provider x --auth-token <token> --ct0 <ct0>
+```
+> Extract `auth_token` and `ct0` cookies from your browser. No password login — cookie-based auth only.
+>
+> See the [X Guide](docs/en/guide-x.md) for full API reference, GraphQL sync, and rate limit rules.
+
 ## Usage
 
 | Say this | Agent handles |
@@ -107,12 +117,17 @@ npx viruagent-cli login --provider insta --username <id> --password <pw>
 | "Analyze and comment on @user's feed" | analyzePost → AI generates comment → comment |
 | "Follow @user" | Login → follow (with delay) |
 | "Check Instagram rate limit" | rate-limit-status → show counters |
+| "Tweet this text" | X login → publish (with rate limit) |
+| "Search X for AI tools" | search → return results |
+| "Like and follow IT devs on X" | search → like + follow (with delays) |
+| "Show my X timeline" | getFeed → show latest tweets |
 
 ## Platform Guides
 
 - **[Tistory Guide](docs/en/guide-tistory.md)** — Blog publishing, image upload, categories
 - **[Naver Blog Guide](docs/en/guide-naver.md)** — SE Editor, blog publishing, image upload
 - **[Instagram Guide](docs/en/guide-instagram.md)** — 18 API methods, rate limits, AI commenting
+- **[X (Twitter) Guide](docs/en/guide-x.md)** — GraphQL API, dynamic queryId sync, rate limits
 
 ## Supported Environments
 
@@ -129,6 +144,7 @@ npx viruagent-cli login --provider insta --username <id> --password <pw>
 | CLI Framework | Commander.js |
 | Browser Automation | Playwright (Tistory, Naver only) |
 | Instagram API | Pure HTTP fetch (no browser) |
+| X (Twitter) API | Internal GraphQL API with dynamic queryId extraction |
 | Session Management | JSON file (`~/.viruagent-cli/`) |
 | Rate Limiting | Per-user persistent counters with random delays |
 | Image Search | DuckDuckGo, Wikimedia Commons |

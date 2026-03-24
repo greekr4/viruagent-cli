@@ -116,12 +116,14 @@ const runCommand = async (command, opts = {}) => {
           username: opts.username || undefined,
           password: opts.password || undefined,
           twoFactorCode: opts.twoFactorCode || undefined,
+          authToken: opts.authToken || undefined,
+          ct0: opts.ct0 || undefined,
         })
       )();
 
     case 'publish': {
       const content = readContent(opts);
-      if (!content && providerName !== 'insta') {
+      if (!content && providerName !== 'insta' && providerName !== 'x') {
         throw createError('MISSING_CONTENT', 'publish requires --content or --content-file', 'viruagent-cli publish --spec');
       }
       return withProvider(() =>
@@ -274,6 +276,36 @@ const runCommand = async (command, opts = {}) => {
 
     case 'rate-limit-status':
       return withProvider(() => Promise.resolve(provider.rateLimitStatus()))();
+
+    // ── X (Twitter)-specific commands ──
+
+    case 'search':
+      if (!opts.query) {
+        throw createError('MISSING_PARAM', 'search requires --query');
+      }
+      return withProvider(() => provider.search({ query: opts.query, limit: parseIntOrNull(opts.limit) || 20 }))();
+
+    case 'retweet':
+      if (!opts.postId) {
+        throw createError('MISSING_PARAM', 'retweet requires --post-id');
+      }
+      return withProvider(() => provider.retweet({ postId: opts.postId }))();
+
+    case 'unretweet':
+      if (!opts.postId) {
+        throw createError('MISSING_PARAM', 'unretweet requires --post-id');
+      }
+      return withProvider(() => provider.unretweet({ postId: opts.postId }))();
+
+    case 'delete':
+    case 'delete-post':
+      if (!opts.postId) {
+        throw createError('MISSING_PARAM', 'delete requires --post-id');
+      }
+      return withProvider(() => provider.delete ? provider.delete({ postId: opts.postId }) : provider.deletePost({ postId: opts.postId }))();
+
+    case 'sync-operations':
+      return withProvider(() => provider.syncOperations())();
 
     default:
       throw createError('UNKNOWN_COMMAND', `Unknown command: ${command}`, 'viruagent-cli --spec');

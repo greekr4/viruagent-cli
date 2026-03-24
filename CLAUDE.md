@@ -33,12 +33,19 @@ src/
 │   │   ├── selectors.js
 │   │   ├── editorConvert.js
 │   │   └── imageUpload.js
-│   └── insta/                   # Instagram 프로바이더 (순수 HTTP, 브라우저 불필요)
-│       ├── index.js             # 메인 (18개 메서드)
-│       ├── auth.js              # HTTP 로그인 (fetch 기반)
-│       ├── session.js           # 세션 + rate limit 영속화 (userId별)
-│       ├── apiClient.js         # Instagram API 클라이언트 + 안전 규칙
-│       ├── smartComment.js      # 게시물 분석 (썸네일 base64 + 캡션)
+│   ├── insta/                   # Instagram 프로바이더 (순수 HTTP, 브라우저 불필요)
+│   │   ├── index.js             # 메인 (18개 메서드)
+│   │   ├── auth.js              # HTTP 로그인 (fetch 기반)
+│   │   ├── session.js           # 세션 + rate limit 영속화 (userId별)
+│   │   ├── apiClient.js         # Instagram API 클라이언트 + 안전 규칙
+│   │   ├── smartComment.js      # 게시물 분석 (썸네일 base64 + 캡션)
+│   │   └── utils.js
+│   └── x/                       # X (Twitter) 프로바이더 (비공식 GraphQL API, 브라우저 불필요)
+│       ├── index.js             # 메인 (16개 메서드)
+│       ├── auth.js              # 쿠키 기반 인증 (auth_token + ct0)
+│       ├── session.js           # 세션 + rate limit 영속화
+│       ├── apiClient.js         # GraphQL API 클라이언트 + 안전 규칙
+│       ├── graphqlSync.js       # main.js에서 queryId 동적 추출 + 캐싱
 │       └── utils.js
 ├── bin/
 │   └── index.js                 # CLI 엔트리포인트
@@ -53,7 +60,9 @@ src/
 ├── sessions/
 │   ├── tistory-session.json     # Tistory 쿠키
 │   ├── naver-session.json       # Naver 쿠키
-│   └── insta-session.json       # Instagram 쿠키 + rate limit 카운터 (userId별)
+│   ├── insta-session.json       # Instagram 쿠키 + rate limit 카운터 (userId별)
+│   └── x-session.json           # X (Twitter) 쿠키 (auth_token + ct0)
+├── x-graphql-cache.json         # X GraphQL queryId 캐시 (1시간 TTL)
 └── providers.json               # 프로바이더 메타 정보
 ```
 
@@ -64,6 +73,7 @@ src/
 | tistory   | Playwright 브라우저 | playwright | 블로그 글 발행, 임시저장, 이미지 업로드 |
 | naver     | Playwright 브라우저 | playwright | 블로그 글 발행, 에디터 컴포넌트 변환 |
 | insta     | 순수 HTTP (fetch)   | 없음       | 로그인, 프로필, 피드, 좋아요, 댓글, 팔로우, 포스팅 |
+| x         | 쿠키 기반 (auth_token + ct0) | 없음 | 트윗 발행, 타임라인, 검색, 좋아요, 리트윗, 미디어 업로드 |
 
 ## Instagram Rate Limit 규칙
 
@@ -82,6 +92,23 @@ src/
 - 카운터는 세션 파일에 userId별로 영속화
 - challenge 발생 시 브라우저에서 본인 인증 필요
 
+## X (Twitter) Rate Limit 규칙
+
+신규 계정 (0~30일) 기준:
+
+| 액션 | 딜레이 | 시간당 | 일일 |
+|------|--------|--------|------|
+| 트윗 | 120~300초 (2~5분) | 10 | 50 |
+| 좋아요 | 30~60초 | 15 | 200 |
+| 리트윗 | 60~120초 | 10 | 50 |
+| 팔로우 | 120~180초 | 10 | 100 |
+| 언팔로우 | 120~180초 | 8 | 80 |
+
+- 트윗/답글/인용 합산 하드캡: 2,400/일 (성숙 계정)
+- 226 에러 발생 시 12~48시간 쿨다운 필수
+- 읽기(프로필/타임라인/검색)는 HTTP API, 쓰기(발행)는 브라우저 경유 권장 (신규 계정)
+- queryId는 `~/.viruagent-cli/x-graphql-cache.json`에 캐싱 (1시간 TTL, 자동 갱신)
+
 ## 환경변수
 
 ```
@@ -96,6 +123,10 @@ NAVER_PASSWORD=
 # Instagram
 INSTA_USERNAME=
 INSTA_PASSWORD=
+
+# X (Twitter) — 브라우저에서 쿠키 추출 필요
+X_AUTH_TOKEN=
+X_CT0=
 ```
 
 ## 배포
