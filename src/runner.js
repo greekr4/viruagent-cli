@@ -118,12 +118,14 @@ const runCommand = async (command, opts = {}) => {
           twoFactorCode: opts.twoFactorCode || undefined,
           authToken: opts.authToken || undefined,
           ct0: opts.ct0 || undefined,
+          clientId: opts.clientId || undefined,
+          clientSecret: opts.clientSecret || undefined,
         })
       )();
 
     case 'publish': {
       const content = readContent(opts);
-      if (!content && providerName !== 'insta' && providerName !== 'x') {
+      if (!content && providerName !== 'insta' && providerName !== 'x' && providerName !== 'reddit') {
         throw createError('MISSING_CONTENT', 'publish requires --content or --content-file', 'viruagent-cli publish --spec');
       }
       return withProvider(() =>
@@ -140,6 +142,9 @@ const runCommand = async (command, opts = {}) => {
           imageUploadLimit: parseIntOrNull(opts.imageUploadLimit) || 1,
           minimumImageCount: parseIntOrNull(opts.minimumImageCount) || 1,
           autoUploadImages: opts.autoUploadImages !== false,
+          subreddit: opts.subreddit || undefined,
+          kind: opts.kind || undefined,
+          flair: opts.flair || undefined,
         })
       )();
     }
@@ -303,6 +308,18 @@ const runCommand = async (command, opts = {}) => {
         throw createError('MISSING_PARAM', 'delete requires --post-id');
       }
       return withProvider(() => provider.delete ? provider.delete({ postId: opts.postId }) : provider.deletePost({ postId: opts.postId }))();
+
+    case 'subscribe':
+      if (!opts.subreddit) {
+        throw createError('MISSING_PARAM', 'subscribe requires --subreddit');
+      }
+      return withProvider(() => provider.subscribe({ subreddit: opts.subreddit }))();
+
+    case 'unsubscribe':
+      if (!opts.subreddit) {
+        throw createError('MISSING_PARAM', 'unsubscribe requires --subreddit');
+      }
+      return withProvider(() => provider.unsubscribe({ subreddit: opts.subreddit }))();
 
     case 'sync-operations':
       return withProvider(() => provider.syncOperations())();

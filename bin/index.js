@@ -18,7 +18,7 @@ program
 
 // Global options
 const addProviderOption = (cmd) =>
-  cmd.option('--provider <name>', 'Provider name (tistory, naver, insta)', 'tistory');
+  cmd.option('--provider <name>', 'Provider name (tistory, naver, insta, x, reddit)', 'tistory');
 
 const addDryRunOption = (cmd) =>
   cmd.option('--dry-run', 'Validate params without executing', false);
@@ -49,6 +49,10 @@ loginCmd
   .option('--headless', 'Run browser in headless mode', false)
   .option('--manual', 'Use manual login mode', false)
   .option('--two-factor-code <code>', '2FA verification code')
+  .option('--auth-token <token>', 'Auth token (X provider)')
+  .option('--ct0 <ct0>', 'CT0 token (X provider)')
+  .option('--client-id <id>', 'OAuth Client ID (Reddit)')
+  .option('--client-secret <secret>', 'OAuth Client Secret (Reddit)')
   .action((opts) => execute('login', opts));
 
 const publishCmd = program
@@ -70,6 +74,9 @@ publishCmd
   .option('--minimum-image-count <n>', 'Minimum required images', '1')
   .option('--no-auto-upload-images', 'Disable automatic image uploading')
   .option('--no-enforce-system-prompt', 'Disable system prompt enforcement')
+  .option('--subreddit <name>', 'Subreddit name (Reddit)')
+  .option('--kind <type>', 'Post kind: self or link (Reddit)', 'self')
+  .option('--flair <id>', 'Flair template ID (Reddit)')
   .action((opts) => execute('publish', opts));
 
 const saveDraftCmd = program
@@ -249,6 +256,22 @@ const rateLimitCmd = program
   .description('Show current rate limit usage');
 addProviderOption(rateLimitCmd);
 rateLimitCmd.action((opts) => execute('rate-limit-status', opts));
+
+const subscribeCmd = program
+  .command('subscribe')
+  .description('Subscribe to a subreddit (Reddit)');
+addProviderOption(subscribeCmd);
+subscribeCmd
+  .option('--subreddit <name>', 'Subreddit name')
+  .action((opts) => execute('subscribe', opts));
+
+const unsubscribeCmd = program
+  .command('unsubscribe')
+  .description('Unsubscribe from a subreddit (Reddit)');
+addProviderOption(unsubscribeCmd);
+unsubscribeCmd
+  .option('--subreddit <name>', 'Subreddit name')
+  .action((opts) => execute('unsubscribe', opts));
 
 // --- Utility commands ---
 

@@ -13,6 +13,7 @@ const {
   KAKAO_TRIGGER_SELECTORS,
   KAKAO_LOGIN_SELECTORS,
   KAKAO_2FA_SELECTORS,
+  KAKAO_SIMPLE_LOGIN_SELECTORS,
 } = require('./selectors');
 const {
   CHROME_PROFILE_DIR,
@@ -78,6 +79,16 @@ const createAskForAuthentication = ({ sessionPath, tistoryApi, pending2faResult 
     await page.locator(kakaoLoginSelector).click({ timeout: 5000 }).catch(() => {});
     await page.waitForLoadState('domcontentloaded').catch(() => {});
     await page.waitForTimeout(800);
+
+    // Handle "간편로그인 계정 선택" screen — click "새로운 계정으로 로그인"
+    if (page.url().includes('login/simple') || page.url().includes('#simpleLogin')) {
+      const newAccountSelector = await pickValue(page, KAKAO_SIMPLE_LOGIN_SELECTORS.newAccountButton);
+      if (newAccountSelector) {
+        await page.locator(newAccountSelector).click({ timeout: 5000 }).catch(() => {});
+        await page.waitForLoadState('domcontentloaded').catch(() => {});
+        await page.waitForTimeout(800);
+      }
+    }
 
     let finalLoginStatus = false;
     let pendingTwoFactorAction = false;

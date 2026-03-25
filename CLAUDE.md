@@ -40,12 +40,18 @@ src/
 │   │   ├── apiClient.js         # Instagram API 클라이언트 + 안전 규칙
 │   │   ├── smartComment.js      # 게시물 분석 (썸네일 base64 + 캡션)
 │   │   └── utils.js
-│   └── x/                       # X (Twitter) 프로바이더 (비공식 GraphQL API, 브라우저 불필요)
+│   ├── x/                       # X (Twitter) 프로바이더 (비공식 GraphQL API, 브라우저 불필요)
+│   │   ├── index.js             # 메인 (16개 메서드)
+│   │   ├── auth.js              # 쿠키 기반 인증 (auth_token + ct0)
+│   │   ├── session.js           # 세션 + rate limit 영속화
+│   │   ├── apiClient.js         # GraphQL API 클라이언트 + 안전 규칙
+│   │   ├── graphqlSync.js       # main.js에서 queryId 동적 추출 + 캐싱
+│   │   └── utils.js
+│   └── reddit/                  # Reddit 프로바이더 (공식 OAuth2 API, 브라우저 불필요)
 │       ├── index.js             # 메인 (16개 메서드)
-│       ├── auth.js              # 쿠키 기반 인증 (auth_token + ct0)
-│       ├── session.js           # 세션 + rate limit 영속화
-│       ├── apiClient.js         # GraphQL API 클라이언트 + 안전 규칙
-│       ├── graphqlSync.js       # main.js에서 queryId 동적 추출 + 캐싱
+│       ├── auth.js              # OAuth2 password grant 인증
+│       ├── session.js           # 세션 + token 자동 갱신 + rate limit 영속화
+│       ├── apiClient.js         # Reddit REST API 클라이언트 + 안전 규칙
 │       └── utils.js
 ├── bin/
 │   └── index.js                 # CLI 엔트리포인트
@@ -61,7 +67,8 @@ src/
 │   ├── tistory-session.json     # Tistory 쿠키
 │   ├── naver-session.json       # Naver 쿠키
 │   ├── insta-session.json       # Instagram 쿠키 + rate limit 카운터 (userId별)
-│   └── x-session.json           # X (Twitter) 쿠키 (auth_token + ct0)
+│   ├── x-session.json           # X (Twitter) 쿠키 (auth_token + ct0)
+│   └── reddit-session.json     # Reddit OAuth2 token + rate limit 카운터
 ├── x-graphql-cache.json         # X GraphQL queryId 캐시 (1시간 TTL)
 └── providers.json               # 프로바이더 메타 정보
 ```
@@ -74,6 +81,7 @@ src/
 | naver     | Playwright 브라우저 | playwright | 블로그 글 발행, 에디터 컴포넌트 변환 |
 | insta     | 순수 HTTP (fetch)   | 없음       | 로그인, 프로필, 피드, 좋아요, 댓글, 팔로우, 포스팅 |
 | x         | 쿠키 기반 (auth_token + ct0) | 없음 | 트윗 발행, 타임라인, 검색, 좋아요, 리트윗, 미디어 업로드 |
+| reddit    | OAuth2 또는 쿠키 (듀얼) | 없음 | 글 작성, 댓글, 업보트, 검색, 서브레딧 구독 |
 
 ## Instagram Rate Limit 규칙
 
@@ -127,7 +135,31 @@ INSTA_PASSWORD=
 # X (Twitter) — 브라우저에서 쿠키 추출 필요
 X_AUTH_TOKEN=
 X_CT0=
+
+# Reddit — 2가지 인증 방식 지원
+# 방식 1: OAuth2 (권장) — https://www.reddit.com/prefs/apps 에서 script app 생성
+REDDIT_CLIENT_ID=
+REDDIT_CLIENT_SECRET=
+# 방식 2: 쿠키 (OAuth 없이) — username/password만으로 old.reddit.com 레거시 API 사용
+# 공통
+REDDIT_USERNAME=
+REDDIT_PASSWORD=
 ```
+
+## Reddit Rate Limit 규칙
+
+보수적 기준:
+
+| 액션 | 딜레이 | 시간당 | 일일 |
+|------|--------|--------|------|
+| 글 작성 | 600~900초 (10~15분) | 2 | 10 |
+| 댓글 | 120~300초 (2~5분) | 6 | 50 |
+| 업보트 | 10~30초 | 30 | 500 |
+| 구독 | 30~60초 | 10 | 100 |
+
+- OAuth2 API 전체: 100 req/min
+- Token 1시간 만료, 자동 갱신
+- 신규/낮은 karma 계정은 서브레딧별 추가 쿨다운 있음
 
 ## 배포
 

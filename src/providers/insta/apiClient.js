@@ -167,9 +167,10 @@ const createInstaApiClient = ({ sessionPath }) => {
       ...options.headers,
     };
 
-    const res = await fetch(url, { ...options, headers, redirect: 'manual' });
+    const redirectMode = options.followRedirect ? 'follow' : 'manual';
+    const res = await fetch(url, { ...options, headers, redirect: redirectMode });
 
-    if (res.status === 302 || res.status === 301) {
+    if (!options.followRedirect && (res.status === 302 || res.status === 301)) {
       const location = res.headers.get('location') || '';
       if (location.includes('/accounts/login')) {
         throw new Error('Session expired. Please log in again.');
@@ -608,6 +609,7 @@ const createInstaApiClient = ({ sessionPath }) => {
           Offset: '0',
         },
         body: imageBuffer,
+        followRedirect: true,
       },
     );
     const data = await res.json();

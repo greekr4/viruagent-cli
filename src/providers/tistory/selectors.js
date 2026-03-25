@@ -25,6 +25,14 @@ const KAKAO_2FA_SELECTORS = {
   rememberDevice: ['#isRememberBrowser--5', 'input[name="isRememberBrowser"]'],
 };
 
+const KAKAO_SIMPLE_LOGIN_SELECTORS = {
+  newAccountButton: [
+    'a:has-text("새로운 계정으로 로그인")',
+    'span.tit_profile:has-text("새로운 계정으로 로그인")',
+    'a[href*="login_type=simple"]',
+  ],
+};
+
 const KAKAO_ACCOUNT_CONFIRM_SELECTORS = {
   textMarker: [
     'text=해당 카카오 계정으로',
@@ -47,5 +55,6 @@ module.exports = {
   KAKAO_TRIGGER_SELECTORS,
   KAKAO_LOGIN_SELECTORS,
   KAKAO_2FA_SELECTORS,
+  KAKAO_SIMPLE_LOGIN_SELECTORS,
   KAKAO_ACCOUNT_CONFIRM_SELECTORS,
 };

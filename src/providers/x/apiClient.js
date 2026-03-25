@@ -2,6 +2,36 @@ const fs = require('fs');
 const { loadXSession, cookiesToHeader, loadRateLimits, saveRateLimits } = require('./session');
 const { USER_AGENT, BEARER_TOKEN } = require('./auth');
 const { getOperation, invalidateCache } = require('./graphqlSync');
+const { ClientTransaction, handleXMigration } = require('x-client-transaction-id');
+
+// ── x-client-transaction-id singleton (cached, auto-refreshes on error) ──
+let _ctInstance = null;
+let _ctInitTime = 0;
+const CT_TTL_MS = 3600000; // 1 hour
+
+const getClientTransaction = async () => {
+  if (_ctInstance && Date.now() - _ctInitTime < CT_TTL_MS) return _ctInstance;
+  const document = await handleXMigration();
+  _ctInstance = await ClientTransaction.create(document);
+  _ctInitTime = Date.now();
+  return _ctInstance;
+};
+
+const generateTransactionId = async (method, path) => {
+  try {
+    const ct = await getClientTransaction();
+    return await ct.generateTransactionId(method, path);
+  } catch {
+    // If generation fails, invalidate and retry once
+    _ctInstance = null;
+    try {
+      const ct = await getClientTransaction();
+      return await ct.generateTransactionId(method, path);
+    } catch {
+      return undefined; // Proceed without the header if generation fails
+    }
+  }
+};
 
 const randomDelay = (minSec, maxSec) => {
   const ms = (minSec + Math.random() * (maxSec - minSec)) * 1000;
@@ -166,10 +196,28 @@ const createXApiClient = ({ sessionPath }) => {
     'x-twitter-active-user': 'yes',
     'x-twitter-client-language': 'ko',
     Cookie: cookiesToHeader(getCookies()),
+    // Browser fingerprint headers
+    Origin: 'https://x.com',
+    Referer: 'https://x.com/',
+    'sec-ch-ua': '"Chromium";v="146", "Google Chrome";v="146", "Not=A?Brand";v="99"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"macOS"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-origin',
   });
 
   const request = async (url, options = {}) => {
     const headers = { ...buildHeaders(), ...options.headers };
+
+    // Generate x-client-transaction-id for the request
+    const method = (options.method || 'GET').toUpperCase();
+    const urlPath = new URL(url).pathname;
+    const transactionId = await generateTransactionId(method, urlPath);
+    if (transactionId) {
+      headers['x-client-transaction-id'] = transactionId;
+    }
+
     const res = await fetch(url, { ...options, headers, redirect: 'manual' });
 
     if (res.status === 401 || res.status === 403) {

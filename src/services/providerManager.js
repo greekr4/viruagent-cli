@@ -4,15 +4,17 @@ const createTistoryProvider = require('../providers/tistory');
 const createNaverProvider = require('../providers/naver');
 const createInstaProvider = require('../providers/insta');
 const createXProvider = require('../providers/x');
+const createRedditProvider = require('../providers/reddit');
 
 const providerFactory = {
   tistory: createTistoryProvider,
   naver: createNaverProvider,
   insta: createInstaProvider,
   x: createXProvider,
+  reddit: createRedditProvider,
 };
 
-const providers = ['tistory', 'naver', 'insta', 'x'];
+const providers = ['tistory', 'naver', 'insta', 'x', 'reddit'];
 
 const createProviderManager = () => {
   const cache = new Map();
@@ -38,7 +40,7 @@ const createProviderManager = () => {
     return cache.get(cacheKey);
   };
 
-  const providerNames = { tistory: 'Tistory', naver: 'Naver Blog', insta: 'Instagram', x: 'X (Twitter)' };
+  const providerNames = { tistory: 'Tistory', naver: 'Naver Blog', insta: 'Instagram', x: 'X (Twitter)', reddit: 'Reddit' };
   const getAvailableProviders = () => providers.map((provider) => ({
     id: provider,
     name: providerNames[provider] || provider,
