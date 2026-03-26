@@ -1,6 +1,6 @@
 {
   "name": "viruagent-cli",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "AI-agent-optimized CLI for blog publishing (Tistory, Naver) and Instagram automation",
   "private": false,
   "type": "commonjs",
