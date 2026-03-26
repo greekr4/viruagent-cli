@@ -51,7 +51,7 @@ User: "Like and comment on all posts from @username"
 
 ## Quick Start
 
-![viru_install](https://github.com/user-attachments/assets/35efb57f-fada-44c0-8dd4-6d586ef33a7c)
+![viruagent-cli demo](demo/demo.gif)
 
 Copy the following to your AI agent:
 

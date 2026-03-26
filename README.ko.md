@@ -51,7 +51,7 @@
 
 ## 빠른 시작
 
-![viru_install](https://github.com/user-attachments/assets/35efb57f-fada-44c0-8dd4-6d586ef33a7c)
+![viruagent-cli demo](demo/demo.gif)
 
 아래 내용을 AI 에이전트에게 그대로 복사해서 보여주세요.
 
