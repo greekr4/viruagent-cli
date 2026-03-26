@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/76be6d06-3f0d-44e5-8152-d64b2fc68894" alt="viruagent-cli" />
+  <img src="demo/demo.gif" alt="viruagent-cli demo" />
 </p>
 
 <h1 align="center">viruagent-cli</h1>
@@ -51,7 +51,7 @@
 
 ## 빠른 시작
 
-![viruagent-cli demo](demo/demo.gif)
+![viru_install](https://github.com/user-attachments/assets/35efb57f-fada-44c0-8dd4-6d586ef33a7c)
 
 아래 내용을 AI 에이전트에게 그대로 복사해서 보여주세요.
 

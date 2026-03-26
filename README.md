@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/76be6d06-3f0d-44e5-8152-d64b2fc68894" alt="viruagent-cli" />
+  <img src="demo/demo.gif" alt="viruagent-cli demo" />
 </p>
 
 <h1 align="center">viruagent-cli</h1>
@@ -51,7 +51,7 @@ User: "Like and comment on all posts from @username"
 
 ## Quick Start
 
-![viruagent-cli demo](demo/demo.gif)
+![viru_install](https://github.com/user-attachments/assets/35efb57f-fada-44c0-8dd4-6d586ef33a7c)
 
 Copy the following to your AI agent:
 
