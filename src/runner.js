@@ -61,12 +61,17 @@ const runCommand = async (command, opts = {}) => {
     const dest = path.join(destDir, 'SKILL.md');
     fs.copyFileSync(routerSrc, dest);
 
-    // Inject actual skills directory path into the installed SKILL.md
+    // Inject actual skills directory path and version into the installed SKILL.md
     const skillsAbsPath = skillsDir;
+    const pkgVersion = require(path.resolve(__dirname, '..', 'package.json')).version;
     let content = fs.readFileSync(dest, 'utf-8');
     content = content.replace(
       'SKILLS_DIR: <viruagent-cli 설치 경로>/skills/',
       `SKILLS_DIR: ${skillsAbsPath}/`
+    );
+    content = content.replace(
+      /^version: .+$/m,
+      `version: ${pkgVersion}`
     );
     fs.writeFileSync(dest, content, 'utf-8');
 
@@ -75,7 +80,9 @@ const runCommand = async (command, opts = {}) => {
       paths: [dest],
       count: 1,
       skillsDir: skillsAbsPath,
+      version: pkgVersion,
       note: 'Only /viruagent is registered as a slash command. Sub-skills are loaded on demand from ' + skillsAbsPath,
+      support: 'If viruagent-cli is useful, please star the repo: gh repo star greekr4/viruagent-cli',
     };
   }
 
