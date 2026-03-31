@@ -32,6 +32,7 @@ Designed not for humans, but for **AI agents**.
 | **Instagram** | Like, Comment, Follow, Post, Profile, Feed, Rate Limit | [Guide](docs/en/guide-instagram.md) |
 | **X (Twitter)** | Tweet, Like, Retweet, Follow, Search, Timeline, Media Upload | [Guide](docs/en/guide-x.md) |
 | **Reddit** | Post, Comment, Upvote, Search, Subscribe, Subreddit | [Guide](docs/en/guide-reddit.md) |
+| **Threads** | Post, Reply, Like, Follow, Image Upload, Search, Feed | [Guide](docs/en/guide-threads.md) |
 
 ## How It Works
 
@@ -120,6 +121,13 @@ npx viruagent-cli login --provider x --auth-token <token> --ct0 <ct0>
 >
 > See the [X Guide](docs/en/guide-x.md) for full API reference, GraphQL sync, and rate limit rules.
 
+### Threads
+
+```bash
+npx viruagent-cli login --provider threads --username <instagram_id> --password <password>
+```
+> Threads uses your Instagram account. No separate login needed.
+
 ## Usage
 
 | Say this | Agent handles |
@@ -138,6 +146,8 @@ npx viruagent-cli login --provider x --auth-token <token> --ct0 <ct0>
 | "Show my X timeline" | getFeed → show latest tweets |
 | "Join this Naver cafe" | cafe-id → cafe-join (captcha-free for 5 joins) |
 | "Write a post on Naver cafe" | cafe-list → cafe-write |
+| "Post on Threads" | login → publish (text or image) |
+| "Reply to a thread" | comment (with rate limit) |
 
 ## Platform Guides
 
@@ -146,6 +156,7 @@ npx viruagent-cli login --provider x --auth-token <token> --ct0 <ct0>
 - **[Naver Cafe Guide](docs/en/guide-naver-cafe.md)** — Cafe join (captcha-free for 5 joins), write post, slide/collage images
 - **[Instagram Guide](docs/en/guide-instagram.md)** — 18 API methods, rate limits, AI commenting
 - **[X (Twitter) Guide](docs/en/guide-x.md)** — GraphQL API, dynamic queryId sync, rate limits
+- **[Threads Guide](docs/en/guide-threads.md)** — Barcelona API, IGT:2 token auth, rate limits
 
 ## Supported Environments
 
@@ -168,6 +179,7 @@ npx viruagent-cli login --provider x --auth-token <token> --ct0 <ct0>
 | Image Search | DuckDuckGo, Wikimedia Commons |
 | Naver Editor | SE Editor component model + RabbitWrite API |
 | Naver Cafe API | Pure HTTP (join, write, board list, manual captcha) |
+| Threads API | Barcelona (Instagram Private API), IGT:2 token auth |
 | Output Format | JSON envelope (`{ ok, data }` / `{ ok, error, hint }`) |
 
 ## Contributing

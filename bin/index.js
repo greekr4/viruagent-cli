@@ -18,7 +18,7 @@ program
 
 // Global options
 const addProviderOption = (cmd) =>
-  cmd.option('--provider <name>', 'Provider name (tistory, naver, insta, x, reddit)', 'tistory');
+  cmd.option('--provider <name>', 'Provider name (tistory, naver, insta, x, reddit, threads)', 'tistory');
 
 const addDryRunOption = (cmd) =>
   cmd.option('--dry-run', 'Validate params without executing', false);

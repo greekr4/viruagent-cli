@@ -132,7 +132,7 @@ const runCommand = async (command, opts = {}) => {
 
     case 'publish': {
       const content = readContent(opts);
-      if (!content && providerName !== 'insta' && providerName !== 'x' && providerName !== 'reddit') {
+      if (!content && providerName !== 'insta' && providerName !== 'x' && providerName !== 'reddit' && providerName !== 'threads') {
         throw createError('MISSING_CONTENT', 'publish requires --content or --content-file', 'viruagent-cli publish --spec');
       }
       return withProvider(() =>

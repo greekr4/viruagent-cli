@@ -13,6 +13,8 @@ triggers:
   - 좋아요
   - 댓글
   - 팔로우
+  - 쓰레드
+  - threads
 metadata:
   category: "router"
   requires:
@@ -32,6 +34,7 @@ viruagent-cli를 사용하는 블로그/SNS 자동화 에이전트입니다.
 | 네이버, naver | `va-naver/SKILL.md` |
 | 카페, cafe, 카페 가입, 카페 글쓰기 | `va-naver-cafe-join/SKILL.md` 또는 `va-naver-cafe-write/SKILL.md` |
 | 인스타, instagram, 좋아요, 댓글, 팔로우 | `va-insta/SKILL.md` |
+| 쓰레드, threads | `va-threads/SKILL.md` |
 | 블로그 써줘 (플랫폼 미지정) | 사용자에게 플랫폼 질문 |
 | 블로거 역할 | `persona-blogger/SKILL.md` |
 | 인플루언서 관리 | `persona-influencer-manager/SKILL.md` |
@@ -75,6 +78,8 @@ SKILLS_DIR: <viruagent-cli 설치 경로>/skills/
 | va-insta-follow | `va-insta-follow/SKILL.md` | 팔로우/언팔 |
 | va-insta-dm | `va-insta-dm/SKILL.md` | DM |
 | va-insta-feed | `va-insta-feed/SKILL.md` | 피드/프로필/분석 |
+| va-threads | `va-threads/SKILL.md` | Threads 개요 + 레이트리밋 |
+| va-threads-publish | `va-threads-publish/SKILL.md` | Threads 글쓰기 |
 
 ### 페르소나 스킬
 

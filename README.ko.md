@@ -31,6 +31,7 @@
 | **Naver Cafe** | 카페 가입 (모바일 5회 캡차 면제), 글쓰기, 게시판 조회, 이미지 업로드 (슬라이드/콜라주) | [가이드](docs/ko/guide-naver-cafe.md) |
 | **Instagram** | 좋아요, 댓글, 팔로우, 포스팅, 프로필, 피드 | [가이드](docs/ko/guide-instagram.md) |
 | **X (Twitter)** | 트윗, 좋아요, 리트윗, 팔로우, 검색, 타임라인, 미디어 업로드 | [가이드](docs/ko/guide-x.md) |
+| **Threads** | 글쓰기, 답글, 좋아요, 팔로우, 이미지 업로드, 검색, 피드 | [가이드](docs/ko/guide-threads.md) |
 
 ## 동작 방식
 
@@ -119,6 +120,13 @@ npx viruagent-cli login --provider x --auth-token <토큰> --ct0 <ct0>
 >
 > 전체 API 레퍼런스, GraphQL 동기화, rate limit 규칙은 [X 가이드](docs/ko/guide-x.md)를 참고하세요.
 
+### Threads
+
+```bash
+npx viruagent-cli login --provider threads --username <인스타 ID> --password <비밀번호>
+```
+> Instagram 계정으로 로그인합니다. 쓰레드는 별도 계정이 없습니다.
+
 ## 사용법
 
 | 이렇게 말하면 | 에이전트가 알아서 |
@@ -137,6 +145,8 @@ npx viruagent-cli login --provider x --auth-token <토큰> --ct0 <ct0>
 | "내 X 타임라인 보여줘" | getFeed → 최신 트윗 표시 |
 | "이 네이버 카페 가입해줘" | cafe-id → cafe-join (모바일 5회 캡차 면제) |
 | "네이버 카페에 글 써줘" | cafe-list → cafe-write |
+| "쓰레드에 글 올려줘" | login → publish (텍스트 또는 이미지) |
+| "이 쓰레드에 답글 달아줘" | comment (rate limit 자동 적용) |
 
 ## 플랫폼별 가이드
 
@@ -145,6 +155,7 @@ npx viruagent-cli login --provider x --auth-token <토큰> --ct0 <ct0>
 - **[Naver Cafe 가이드](docs/ko/guide-naver-cafe.md)** — 카페 가입 (모바일 5회 캡차 면제), 글쓰기, 슬라이드/콜라주
 - **[Instagram 가이드](docs/ko/guide-instagram.md)** — 18개 API 메서드, rate limit 규칙, AI 댓글
 - **[X (Twitter) 가이드](docs/ko/guide-x.md)** — GraphQL API, queryId 동적 동기화, rate limit 규칙
+- **[Threads 가이드](docs/ko/guide-threads.md)** — Barcelona API, IGT:2 토큰 인증, rate limit 규칙
 
 ## 지원 환경
 
@@ -167,6 +178,7 @@ npx viruagent-cli login --provider x --auth-token <토큰> --ct0 <ct0>
 | 이미지 검색 | DuckDuckGo, Wikimedia Commons |
 | 네이버 에디터 | SE Editor 컴포넌트 모델 + RabbitWrite API |
 | 네이버 카페 API | 순수 HTTP (가입, 글쓰기, 게시판 조회, 사용자 캡차 입력) |
+| Threads API | Barcelona (Instagram Private API), IGT:2 토큰 인증 |
 | 출력 형식 | JSON envelope (`{ ok, data }` / `{ ok, error, hint }`) |
 
 ## Contributing

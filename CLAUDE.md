@@ -48,11 +48,17 @@ src/
 │   │   ├── apiClient.js         # GraphQL API 클라이언트 + 안전 규칙
 │   │   ├── graphqlSync.js       # main.js에서 queryId 동적 추출 + 캐싱
 │   │   └── utils.js
-│   └── reddit/                  # Reddit 프로바이더 (공식 OAuth2 API, 브라우저 불필요)
-│       ├── index.js             # 메인 (16개 메서드)
-│       ├── auth.js              # OAuth2 password grant 인증
-│       ├── session.js           # 세션 + token 자동 갱신 + rate limit 영속화
-│       ├── apiClient.js         # Reddit REST API 클라이언트 + 안전 규칙
+│   ├── reddit/                  # Reddit 프로바이더 (공식 OAuth2 API, 브라우저 불필요)
+│   │   ├── index.js             # 메인 (16개 메서드)
+│   │   ├── auth.js              # OAuth2 password grant 인증
+│   │   ├── session.js           # 세션 + token 자동 갱신 + rate limit 영속화
+│   │   ├── apiClient.js         # Reddit REST API 클라이언트 + 안전 규칙
+│   │   └── utils.js
+│   └── threads/                 # Threads 프로바이더 (Barcelona API, 브라우저 불필요)
+│       ├── index.js             # 메인 (publish, comment, like, follow, search, feed 등)
+│       ├── auth.js              # Instagram Bloks API 로그인 (IGT:2 토큰)
+│       ├── session.js           # 세션 + rate limit 영속화
+│       ├── apiClient.js         # Barcelona API 클라이언트 + 안전 규칙
 │       └── utils.js
 ├── bin/
 │   └── index.js                 # CLI 엔트리포인트
@@ -69,7 +75,8 @@ src/
 │   ├── naver-session.json       # Naver 쿠키
 │   ├── insta-session.json       # Instagram 쿠키 + rate limit 카운터 (userId별)
 │   ├── x-session.json           # X (Twitter) 쿠키 (auth_token + ct0)
-│   └── reddit-session.json     # Reddit OAuth2 token + rate limit 카운터
+│   ├── reddit-session.json     # Reddit OAuth2 token + rate limit 카운터
+│   └── threads-session.json   # Threads IGT:2 토큰 + rate limit 카운터
 ├── x-graphql-cache.json         # X GraphQL queryId 캐시 (1시간 TTL)
 └── providers.json               # 프로바이더 메타 정보
 ```
@@ -83,6 +90,7 @@ src/
 | insta     | 순수 HTTP (fetch)   | 없음       | 로그인, 프로필, 피드, 좋아요, 댓글, 팔로우, 포스팅 |
 | x         | 쿠키 기반 (auth_token + ct0) | 없음 | 트윗 발행, 타임라인, 검색, 좋아요, 리트윗, 미디어 업로드 |
 | reddit    | OAuth2 또는 쿠키 (듀얼) | 없음 | 글 작성, 댓글, 업보트, 검색, 서브레딧 구독 |
+| threads   | Instagram Bloks API (IGT:2 토큰) | 없음 | 글쓰기, 답글, 좋아요, 팔로우, 이미지 업로드, 검색, 피드 |
 
 ## Instagram Rate Limit 규칙
 
@@ -145,6 +153,10 @@ REDDIT_CLIENT_SECRET=
 # 공통
 REDDIT_USERNAME=
 REDDIT_PASSWORD=
+
+# Threads — Instagram 계정 사용 (INSTA_* 환경변수도 호환)
+THREADS_USERNAME=
+THREADS_PASSWORD=
 ```
 
 ## Reddit Rate Limit 규칙
@@ -162,6 +174,22 @@ REDDIT_PASSWORD=
 - Token 1시간 만료, 자동 갱신
 - 신규/낮은 karma 계정은 서브레딧별 추가 쿨다운 있음
 
+## Threads Rate Limit 규칙
+
+Instagram과 유사한 보수적 기준:
+
+| 액션 | 딜레이 | 시간당 | 일일 |
+|------|--------|--------|------|
+| 글쓰기 | 120~300초 (2~5분) | 5 | 25 |
+| 좋아요 | 20~40초 | 15 | 500 |
+| 답글 | 300~420초 (5~7분) | 5 | 100 |
+| 팔로우 | 60~120초 | 15 | 250 |
+
+- Instagram 계정 기반이므로 Instagram과 rate limit 연동 가능성 있음
+- Barcelona User-Agent + Bloks API 사용
+- IGT:2 토큰 인증
+- 세션: `~/.viruagent-cli/sessions/threads-session.json`
+
 ## 배포
 
 **배포는 GitHub Actions로 자동화되어 있음. 절대 `npm publish` 직접 실행 금지.**
@@ -169,6 +197,35 @@ REDDIT_PASSWORD=
 - `main` 브랜치에 push → GitHub Actions가 자동으로 npm 배포
 - 버전 bump: `npm version patch/minor/major` 후 push
 - 워크플로우 파일: `.github/workflows/`
+
+## 에이전트 하네스
+
+| 에이전트 | 파일 | 역할 | 담당 |
+|----------|------|------|------|
+| web-reverser | `.claude/agents/web-reverser.md` | 대상 웹사이트 JS 번들 역공학, API/인증/데이터구조 추출 | **Threads 프로바이더 API 리서치** |
+| provider-builder | `.claude/agents/provider-builder.md` | 프로바이더 코드 구현 (팩토리 패턴 준수) | 프로바이더 생성/수정 |
+| skill-writer | `.claude/agents/skill-writer.md` | 스킬 파일(SKILL.md) 생성/업데이트 | 스킬 동기화 |
+| qa-verifier | `.claude/agents/qa-verifier.md` | CLI 명령 테스트, 코드 구조 검증 | QA |
+
+### 하네스 파이프라인 (새 프로바이더 추가 시)
+
+```
+web-reverser → _workspace/{provider}_api_research.md
+  ↓
+provider-builder → src/providers/{provider}/ + runner.js + bin/index.js
+  ↓
+skill-writer → skills/va-{provider}*/SKILL.md
+  ↓
+qa-verifier → 기능 검증
+  ↓
+readme-maker (스킬) → README, 가이드, CLAUDE.md 업데이트
+```
+
+### 현재 진행 중: Threads 프로바이더
+
+- 하네스 스킬: `.claude/skills/threads-harness/skill.md`
+- Phase 1: web-reverser → Threads API 역공학 (대기 중)
+- Phase 2~5: 순차 실행 예정
 
 ## 개발 컨벤션
 
