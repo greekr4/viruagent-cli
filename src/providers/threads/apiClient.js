@@ -348,16 +348,20 @@ const createThreadsApiClient = ({ sessionPath }) => {
       timezone_offset: '32400',
       source_type: '4',
       caption: text || '',
-      upload_id: uploadId,
       device_id: deviceId,
       _uid: userId,
-      scene_capture_type: '',
+      client_sidecar_id: uploadId,
+      children_metadata: [{
+        upload_id: uploadId,
+        source_type: '4',
+        timezone_offset: '32400',
+        scene_capture_type: '',
+      }],
     };
 
     const body = `signed_body=SIGNATURE.${encodeURIComponent(JSON.stringify(payload))}`;
 
-    // Single image uses configure_text_only_post (same as text, with upload_id)
-    const res = await request(`${BASE_URL}/api/v1/media/configure_text_only_post/`, {
+    const res = await request(`${BASE_URL}/api/v1/media/configure_text_post_app_sidecar/`, {
       method: 'POST',
       body,
       allowError: true,
@@ -372,6 +376,7 @@ const createThreadsApiClient = ({ sessionPath }) => {
       id: data.media?.pk || data.media?.id,
       code: data.media?.code,
       caption: data.media?.caption?.text || text,
+      permalink: data.media?.permalink,
       status: data.status,
     };
   });
