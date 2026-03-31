@@ -320,6 +320,14 @@ cafeWriteCmd
   .option('--image-layout <layout>', 'Image layout: default, slide, collage', 'default')
   .action((opts) => execute('cafe-write', opts));
 
+const deletePostCmd = program
+  .command('delete-post')
+  .description('Delete a post');
+addProviderOption(deletePostCmd);
+deletePostCmd
+  .option('--post-id <id>', 'Post ID to delete')
+  .action((opts) => execute('delete-post', opts));
+
 // --- Utility commands ---
 
 const installSkillCmd = program
