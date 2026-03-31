@@ -28,6 +28,7 @@
 |--------|--------|----------|--------|
 | **Tistory** | Playwright (카카오) | 글 발행, 임시저장, 카테고리, 이미지 업로드 | [가이드](docs/ko/guide-tistory.md) |
 | **Naver Blog** | Playwright (네이버) | 글 발행, 카테고리, SE Editor, 이미지 업로드 | [가이드](docs/ko/guide-naver.md) |
+| **Naver Cafe** | HTTP (브라우저 불필요) | 카페 가입 (캡차 자동해결), 글쓰기, 게시판 조회 | [가이드](docs/ko/guide-naver.md) |
 | **Instagram** | HTTP (브라우저 불필요) | 좋아요, 댓글, 팔로우, 포스팅, 프로필, 피드 | [가이드](docs/ko/guide-instagram.md) |
 | **X (Twitter)** | HTTP (쿠키 인증) | 트윗, 좋아요, 리트윗, 팔로우, 검색, 타임라인, 미디어 업로드 | [가이드](docs/ko/guide-x.md) |
 
@@ -134,6 +135,8 @@ npx viruagent-cli login --provider x --auth-token <토큰> --ct0 <ct0>
 | "X에서 AI 도구 검색해줘" | search → 결과 반환 |
 | "X에서 IT 개발자 좋아요하고 팔로우해줘" | search → like + follow (딜레이 자동 적용) |
 | "내 X 타임라인 보여줘" | getFeed → 최신 트윗 표시 |
+| "이 네이버 카페 가입해줘" | cafe-id → cafe-join (캡차 자동해결) |
+| "네이버 카페에 글 써줘" | cafe-list → cafe-write |
 
 ## 플랫폼별 가이드
 
@@ -162,6 +165,7 @@ npx viruagent-cli login --provider x --auth-token <토큰> --ct0 <ct0>
 | Rate Limiting | 유저별 영속 카운터 + 랜덤 딜레이 |
 | 이미지 검색 | DuckDuckGo, Wikimedia Commons |
 | 네이버 에디터 | SE Editor 컴포넌트 모델 + RabbitWrite API |
+| 네이버 카페 API | 순수 HTTP (가입, 글쓰기, 게시판 조회, 2Captcha 자동해결) |
 | 출력 형식 | JSON envelope (`{ ok, data }` / `{ ok, error, hint }`) |
 
 ## Contributing

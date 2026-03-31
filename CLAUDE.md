@@ -25,10 +25,11 @@ src/
 │   │   ├── imageNormalization.js
 │   │   ├── imageSources.js
 │   │   └── imageEnrichment.js
-│   ├── naver/                   # Naver 블로그 프로바이더 (Playwright 로그인)
-│   │   ├── index.js
-│   │   ├── auth.js
-│   │   ├── session.js
+│   ├── naver/                   # Naver 블로그+카페 프로바이더
+│   │   ├── index.js             # 메인 (블로그 + 카페 메서드)
+│   │   ├── auth.js              # Playwright 로그인
+│   │   ├── session.js           # 세션 관리
+│   │   ├── cafeApiClient.js     # 카페 전용 HTTP API (가입, 글쓰기, 캡차)
 │   │   ├── utils.js
 │   │   ├── selectors.js
 │   │   ├── editorConvert.js
@@ -78,7 +79,7 @@ src/
 | 프로바이더 | 로그인 | 의존성 | 주요 기능 |
 |-----------|--------|--------|----------|
 | tistory   | Playwright 브라우저 | playwright | 블로그 글 발행, 임시저장, 이미지 업로드 |
-| naver     | Playwright 브라우저 | playwright | 블로그 글 발행, 에디터 컴포넌트 변환 |
+| naver     | Playwright 브라우저 + HTTP | playwright | 블로그 글 발행, 카페 가입(캡차 자동해결), 카페 글쓰기 |
 | insta     | 순수 HTTP (fetch)   | 없음       | 로그인, 프로필, 피드, 좋아요, 댓글, 팔로우, 포스팅 |
 | x         | 쿠키 기반 (auth_token + ct0) | 없음 | 트윗 발행, 타임라인, 검색, 좋아요, 리트윗, 미디어 업로드 |
 | reddit    | OAuth2 또는 쿠키 (듀얼) | 없음 | 글 작성, 댓글, 업보트, 검색, 서브레딧 구독 |

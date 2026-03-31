@@ -1,7 +1,7 @@
 ---
 name: va-naver
 version: 1.0.0
-description: "Naver 블로그: 명령 개요 및 플랫폼 특화 규칙"
+description: "Naver 블로그+카페: 명령 개요 및 플랫폼 특화 규칙"
 metadata:
   category: "overview"
   provider: "naver"
@@ -22,6 +22,10 @@ Naver 블로그 퍼블리싱을 위한 viruagent-cli 가이드. 항상 `--provid
 | save-draft | va-naver-draft | 임시저장 (private 포스트) |
 | list-categories | va-naver-categories | 카테고리 조회 |
 | list-posts, read-post | va-naver-posts | 글 목록/읽기 |
+| cafe-id | va-naver-cafe-id | 카페 ID 추출 |
+| cafe-join | va-naver-cafe-join | 카페 가입 (캡차 자동해결) |
+| cafe-list | va-naver-cafe-list | 카페 게시판 목록 |
+| cafe-write | va-naver-cafe-write | 카페 글쓰기 (슬라이드/콜라주) |
 
 ## Naver HTML 규칙
 
@@ -40,4 +44,4 @@ NAVER_PASSWORD=
 
 ## See Also
 
-va-shared, va-naver-login, va-naver-publish, va-naver-draft, va-naver-categories, va-naver-posts
+va-shared, va-naver-login, va-naver-publish, va-naver-draft, va-naver-categories, va-naver-posts, va-naver-cafe-id, va-naver-cafe-join, va-naver-cafe-list, va-naver-cafe-write

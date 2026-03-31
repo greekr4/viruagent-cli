@@ -273,6 +273,52 @@ unsubscribeCmd
   .option('--subreddit <name>', 'Subreddit name')
   .action((opts) => execute('unsubscribe', opts));
 
+// --- Cafe commands (Naver) ---
+
+const cafeIdCmd = program
+  .command('cafe-id')
+  .description('Extract numeric cafeId from a cafe URL');
+addProviderOption(cafeIdCmd);
+cafeIdCmd
+  .option('--cafe-url <url>', 'Cafe URL or slug (e.g. https://cafe.naver.com/inmycar or inmycar)')
+  .action((opts) => execute('cafe-id', opts));
+
+const cafeJoinCmd = program
+  .command('cafe-join')
+  .description('Join a Naver cafe');
+addProviderOption(cafeJoinCmd);
+cafeJoinCmd
+  .option('--cafe-url <url>', 'Cafe URL or slug')
+  .option('--nickname <nick>', 'Nickname to use (default: auto)')
+  .option('--captcha-api-key <key>', '2Captcha API key for auto-solve')
+  .option('--answers <answers>', 'Comma-separated answers for join questions')
+  .action((opts) => execute('cafe-join', opts));
+
+const cafeListCmd = program
+  .command('cafe-list')
+  .description('List boards in a Naver cafe');
+addProviderOption(cafeListCmd);
+cafeListCmd
+  .option('--cafe-id <id>', 'Numeric cafe ID')
+  .option('--cafe-url <url>', 'Cafe URL or slug')
+  .action((opts) => execute('cafe-list', opts));
+
+const cafeWriteCmd = program
+  .command('cafe-write')
+  .description('Write a post to a Naver cafe board');
+addProviderOption(cafeWriteCmd);
+cafeWriteCmd
+  .option('--cafe-id <id>', 'Numeric cafe ID')
+  .option('--cafe-url <url>', 'Cafe URL or slug')
+  .option('--board-id <id>', 'Board (menu) ID')
+  .option('--title <title>', 'Post title')
+  .option('--content <html>', 'Post content as HTML')
+  .option('--content-file <path>', 'Path to HTML content file')
+  .option('--tags <tags>', 'Comma-separated tags')
+  .option('--image-urls <urls>', 'Comma-separated image URLs to upload')
+  .option('--image-layout <layout>', 'Image layout: default, slide, collage', 'default')
+  .action((opts) => execute('cafe-write', opts));
+
 // --- Utility commands ---
 
 const installSkillCmd = program

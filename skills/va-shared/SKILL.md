@@ -30,6 +30,7 @@ viruagent-cli를 사용하는 블로그/SNS 자동화 에이전트입니다.
 |--------|-----------|
 | 티스토리, tistory | `va-tistory/SKILL.md` |
 | 네이버, naver | `va-naver/SKILL.md` |
+| 카페, cafe, 카페 가입, 카페 글쓰기 | `va-naver-cafe-join/SKILL.md` 또는 `va-naver-cafe-write/SKILL.md` |
 | 인스타, instagram, 좋아요, 댓글, 팔로우 | `va-insta/SKILL.md` |
 | 블로그 써줘 (플랫폼 미지정) | 사용자에게 플랫폼 질문 |
 | 블로거 역할 | `persona-blogger/SKILL.md` |
@@ -62,6 +63,10 @@ SKILLS_DIR: <viruagent-cli 설치 경로>/skills/
 | va-naver-draft | `va-naver-draft/SKILL.md` | 임시저장 |
 | va-naver-categories | `va-naver-categories/SKILL.md` | 카테고리 조회 |
 | va-naver-posts | `va-naver-posts/SKILL.md` | 글 목록/읽기 |
+| va-naver-cafe-id | `va-naver-cafe-id/SKILL.md` | 카페 ID 추출 |
+| va-naver-cafe-join | `va-naver-cafe-join/SKILL.md` | 카페 가입 (캡차 자동해결) |
+| va-naver-cafe-list | `va-naver-cafe-list/SKILL.md` | 카페 게시판 목록 |
+| va-naver-cafe-write | `va-naver-cafe-write/SKILL.md` | 카페 글쓰기 (슬라이드/콜라주) |
 | va-insta | `va-insta/SKILL.md` | Instagram 개요 + 레이트리밋 |
 | va-insta-login | `va-insta-login/SKILL.md` | 로그인 + 챌린지 |
 | va-insta-publish | `va-insta-publish/SKILL.md` | 게시물 발행 + 어그로 전략 |

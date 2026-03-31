@@ -28,8 +28,10 @@ Designed not for humans, but for **AI agents**.
 |----------|-------|----------|-------|
 | **Tistory** | Playwright (Kakao) | Publish, Draft, Categories, Image Upload | [Guide](docs/en/guide-tistory.md) |
 | **Naver Blog** | Playwright (Naver) | Publish, Categories, SE Editor, Image Upload | [Guide](docs/en/guide-naver.md) |
+| **Naver Cafe** | HTTP (No Browser) | Cafe Join (auto-captcha), Write Post, Board List | [Guide](docs/en/guide-naver.md) |
 | **Instagram** | HTTP (No Browser) | Like, Comment, Follow, Post, Profile, Feed, Rate Limit | [Guide](docs/en/guide-instagram.md) |
 | **X (Twitter)** | HTTP (Cookie Auth) | Tweet, Like, Retweet, Follow, Search, Timeline, Media Upload | [Guide](docs/en/guide-x.md) |
+| **Reddit** | OAuth2 / Cookie | Post, Comment, Upvote, Search, Subscribe, Subreddit | [Guide](docs/en/guide-reddit.md) |
 
 ## How It Works
 
@@ -134,6 +136,8 @@ npx viruagent-cli login --provider x --auth-token <token> --ct0 <ct0>
 | "Search X for AI tools" | search → return results |
 | "Like and follow IT devs on X" | search → like + follow (with delays) |
 | "Show my X timeline" | getFeed → show latest tweets |
+| "Join this Naver cafe" | cafe-id → cafe-join (auto-captcha) |
+| "Write a post on Naver cafe" | cafe-list → cafe-write |
 
 ## Platform Guides
 
@@ -162,6 +166,7 @@ npx viruagent-cli login --provider x --auth-token <token> --ct0 <ct0>
 | Rate Limiting | Per-user persistent counters with random delays |
 | Image Search | DuckDuckGo, Wikimedia Commons |
 | Naver Editor | SE Editor component model + RabbitWrite API |
+| Naver Cafe API | Pure HTTP (join, write, board list, 2Captcha auto-solve) |
 | Output Format | JSON envelope (`{ ok, data }` / `{ ok, error, hint }`) |
 
 ## Contributing

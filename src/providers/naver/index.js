@@ -1,5 +1,6 @@
 const { saveProviderMeta, clearProviderMeta, getProviderMeta } = require('../../storage/sessionStore');
 const createNaverApiClient = require('../../services/naverApiClient');
+const createCafeApiClient = require('./cafeApiClient');
 const {
   readNaverCredentials,
   normalizeNaverTagList,
@@ -12,6 +13,7 @@ const { createAskForAuthentication } = require('./auth');
 
 const createNaverProvider = ({ sessionPath, account }) => {
   const naverApi = createNaverApiClient({ sessionPath });
+  const cafeApi = createCafeApiClient({ sessionPath });
 
   const askForAuthentication = createAskForAuthentication({
     sessionPath,
@@ -223,6 +225,265 @@ const createNaverProvider = ({ sessionPath, account }) => {
         loggedOut: true,
         sessionPath,
       };
+    },
+
+    // ── Cafe methods ──
+
+    async cafeId({ cafeUrl } = {}) {
+      return withProviderSession(async () => {
+        if (!cafeUrl) {
+          const err = new Error('cafeUrl is required');
+          err.code = 'MISSING_PARAM';
+          throw err;
+        }
+        const { cafeId: id, slug } = await cafeApi.extractCafeId(cafeUrl);
+        return { provider: 'naver', cafeId: id, slug, cafeUrl };
+      });
+    },
+
+    async cafeJoin({ cafeUrl, nickname, captchaApiKey, answers } = {}) {
+      return withProviderSession(async () => {
+        if (!cafeUrl) {
+          const err = new Error('cafeUrl is required');
+          err.code = 'MISSING_PARAM';
+          throw err;
+        }
+
+        // 1. Extract cafeId
+        const { cafeId: id, slug } = await cafeApi.extractCafeId(cafeUrl);
+
+        // 2. Get join form
+        const form = await cafeApi.getJoinForm(id);
+
+        // 3. Determine nickname
+        let finalNickname = nickname || form.nickname;
+        const nickValid = await cafeApi.checkNickname(id, finalNickname);
+        if (!nickValid && !nickname) {
+          finalNickname = `user${Math.floor(Math.random() * 9000 + 1000)}`;
+        }
+
+        // 4. Handle captcha
+        let captchaKey = form.captchaKey;
+        let captchaValue = '';
+
+        if (form.needCaptcha) {
+          if (!captchaApiKey) {
+            return {
+              provider: 'naver',
+              mode: 'cafe-join',
+              status: 'captcha_required',
+              cafeId: id,
+              slug,
+              cafeName: form.cafeName,
+              captchaImageUrl: form.captchaImageUrl,
+              captchaKey: form.captchaKey,
+              message: 'Captcha is required. Provide --captcha-api-key for auto-solve or solve manually.',
+            };
+          }
+
+          // Auto-solve with 2Captcha (max 3 attempts)
+          let solved = false;
+          let captchaImageUrl = form.captchaImageUrl;
+
+          for (let attempt = 0; attempt < 3; attempt++) {
+            const imgBase64 = await cafeApi.downloadCaptchaImage(captchaImageUrl);
+            captchaValue = await cafeApi.solveCaptchaWith2Captcha(imgBase64, captchaApiKey);
+            const validateResult = await cafeApi.validateCaptcha(captchaKey, captchaValue);
+
+            if (validateResult.valid) {
+              solved = true;
+              break;
+            }
+
+            // Update captcha for retry
+            if (validateResult.captchaKey) {
+              captchaKey = validateResult.captchaKey;
+              captchaImageUrl = validateResult.captchaImageUrl;
+            } else {
+              const newForm = await cafeApi.getJoinForm(id);
+              captchaKey = newForm.captchaKey;
+              captchaImageUrl = newForm.captchaImageUrl;
+            }
+            captchaValue = '';
+          }
+
+          if (!solved) {
+            return {
+              provider: 'naver',
+              mode: 'cafe-join',
+              status: 'captcha_failed',
+              cafeId: id,
+              slug,
+              cafeName: form.cafeName,
+              message: 'Captcha solve failed after 3 attempts.',
+            };
+          }
+        }
+
+        // 5. Build answer list
+        const applyAnswerList = (form.applyQuestions || []).map((q, idx) => {
+          if (answers && answers[idx] !== undefined) return answers[idx];
+          if (q.questionType === 'M' && q.answerExampleList?.length > 0) return q.answerExampleList[0];
+          return '네';
+        });
+
+        // 6. Build payload
+        const applyPayload = {
+          applyType: form.applyType,
+          applyQuestionSetno: form.lastsetno,
+          nickname: finalNickname,
+          cafeProfileImagePath: '',
+          sexAndAgeConfig: true,
+          applyAnswerList,
+          applyImageMap: {},
+        };
+
+        if (form.needCaptcha && captchaValue) {
+          applyPayload.captchaKey = captchaKey;
+          applyPayload.captchaValue = captchaValue;
+        }
+
+        // 7. Submit
+        const result = await cafeApi.submitJoin(id, {
+          alimCode: form.alimCode,
+          clubTempId: form.clubTempId,
+          applyPayload,
+        });
+
+        return {
+          provider: 'naver',
+          mode: 'cafe-join',
+          status: form.applyType === 'apply' ? 'applied' : 'joined',
+          cafeId: id,
+          slug,
+          cafeName: form.cafeName,
+          nickname: finalNickname,
+          applyType: form.applyType,
+          captchaSolved: form.needCaptcha,
+          questionCount: form.applyQuestions.length,
+        };
+      });
+    },
+
+    async cafeList({ cafeId: inputCafeId, cafeUrl } = {}) {
+      return withProviderSession(async () => {
+        let resolvedCafeId = inputCafeId;
+        let slug;
+
+        if (!resolvedCafeId && cafeUrl) {
+          const extracted = await cafeApi.extractCafeId(cafeUrl);
+          resolvedCafeId = extracted.cafeId;
+          slug = extracted.slug;
+        }
+        if (!resolvedCafeId) {
+          const err = new Error('cafeId or cafeUrl is required');
+          err.code = 'MISSING_PARAM';
+          throw err;
+        }
+
+        const boards = await cafeApi.getBoardList(resolvedCafeId);
+        return {
+          provider: 'naver',
+          mode: 'cafe-list',
+          cafeId: resolvedCafeId,
+          slug: slug || null,
+          boards,
+        };
+      });
+    },
+
+    async cafeWrite({ cafeId: inputCafeId, cafeUrl, boardId, title, content, tags, imageUrls, imageLayout } = {}) {
+      return withProviderSession(async () => {
+        let resolvedCafeId = inputCafeId;
+
+        if (!resolvedCafeId && cafeUrl) {
+          const extracted = await cafeApi.extractCafeId(cafeUrl);
+          resolvedCafeId = extracted.cafeId;
+        }
+        if (!resolvedCafeId) {
+          const err = new Error('cafeId or cafeUrl is required');
+          err.code = 'MISSING_PARAM';
+          throw err;
+        }
+        if (!boardId) {
+          const err = new Error('boardId is required');
+          err.code = 'MISSING_PARAM';
+          err.hint = 'viruagent-cli cafe-list --provider naver --cafe-id <id>';
+          throw err;
+        }
+        if (!title) {
+          const err = new Error('title is required');
+          err.code = 'MISSING_PARAM';
+          throw err;
+        }
+        if (!content) {
+          const err = new Error('content is required');
+          err.code = 'MISSING_PARAM';
+          throw err;
+        }
+
+        // 1. Get editor info
+        const editorInfo = await cafeApi.getEditorInfo(resolvedCafeId, boardId);
+        const options = editorInfo.options || {};
+
+        // 2. Convert HTML to SE3 components
+        const components = await cafeApi.htmlToComponents(content);
+        if (!components.length) {
+          const err = new Error('Failed to convert content to editor components');
+          err.code = 'CONTENT_CONVERT_FAILED';
+          throw err;
+        }
+
+        // 2.5. Upload images and insert as components (if imageUrls provided)
+        const urls = Array.isArray(imageUrls) ? imageUrls : (imageUrls ? String(imageUrls).split(',').map((u) => u.trim()).filter(Boolean) : []);
+        if (urls.length > 0) {
+          const sessionKey = await cafeApi.getPhotoSessionKey();
+          const userId = editorInfo.userId || '';
+          const uploaded = [];
+          for (let i = 0; i < urls.length; i++) {
+            try {
+              const imgRes = await fetch(urls[i]);
+              if (!imgRes.ok) continue;
+              const buf = Buffer.from(await imgRes.arrayBuffer());
+              const fileName = `image_${i + 1}.jpg`;
+              const imgData = await cafeApi.uploadImage(sessionKey, buf, fileName, userId);
+              if (i === 0) imgData.represent = true;
+              uploaded.push(imgData);
+            } catch { /* skip failed images */ }
+          }
+
+          const layout = imageLayout || 'default';
+          if (uploaded.length > 1 && (layout === 'slide' || layout === 'collage')) {
+            components.push(cafeApi.createImageGroup(uploaded, layout));
+          } else {
+            for (const imgData of uploaded) {
+              components.push(cafeApi.createImageComponent(imgData));
+            }
+          }
+        }
+
+        // 3. Build contentJson
+        const contentJson = cafeApi.buildContentJson(components);
+
+        // 4. Parse tags
+        const tagList = tags
+          ? (Array.isArray(tags) ? tags : String(tags).split(',').map((t) => t.trim()).filter(Boolean))
+          : [];
+
+        // 5. Post article
+        const result = await cafeApi.postArticle(resolvedCafeId, boardId, title, contentJson, tagList, options);
+
+        return {
+          provider: 'naver',
+          mode: 'cafe-write',
+          cafeId: resolvedCafeId,
+          boardId,
+          title,
+          articleId: result.articleId,
+          articleUrl: result.articleUrl,
+          tags: tagList,
+        };
+      });
     },
   };
 };
