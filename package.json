@@ -1,10 +1,11 @@
 {
   "name": "viruagent-cli",
-  "version": "0.7.3",
-  "description": "AI-agent-optimized CLI for blog publishing (Tistory, Naver) and Instagram automation",
+  "version": "0.8.0",
+  "description": "AI-agent-optimized CLI for blog/SNS publishing and engagement (Tistory, Naver, Instagram, X/Twitter, Reddit)",
   "private": false,
   "type": "commonjs",
   "license": "MIT",
+  "author": "greekr4",
   "keywords": [
     "ai-agent",
     "cli",
@@ -12,14 +13,20 @@
     "tistory",
     "naver",
     "instagram",
+    "twitter",
+    "reddit",
     "publishing",
     "automation",
     "llm",
-    "ai-tools"
+    "ai-tools",
+    "social-media"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/greekr4/viruagent-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/greekr4/viruagent-cli/issues"
   },
   "homepage": "https://github.com/greekr4/viruagent-cli#readme",
   "bin": {
