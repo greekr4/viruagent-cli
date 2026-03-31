@@ -64,7 +64,7 @@ SKILLS_DIR: <viruagent-cli 설치 경로>/skills/
 | va-naver-categories | `va-naver-categories/SKILL.md` | 카테고리 조회 |
 | va-naver-posts | `va-naver-posts/SKILL.md` | 글 목록/읽기 |
 | va-naver-cafe-id | `va-naver-cafe-id/SKILL.md` | 카페 ID 추출 |
-| va-naver-cafe-join | `va-naver-cafe-join/SKILL.md` | 카페 가입 (캡차 자동해결) |
+| va-naver-cafe-join | `va-naver-cafe-join/SKILL.md` | 카페 가입 (모바일 5회 캡차 면제) |
 | va-naver-cafe-list | `va-naver-cafe-list/SKILL.md` | 카페 게시판 목록 |
 | va-naver-cafe-write | `va-naver-cafe-write/SKILL.md` | 카페 글쓰기 (슬라이드/콜라주) |
 | va-insta | `va-insta/SKILL.md` | Instagram 개요 + 레이트리밋 |

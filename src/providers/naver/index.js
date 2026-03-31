@@ -241,7 +241,7 @@ const createNaverProvider = ({ sessionPath, account }) => {
       });
     },
 
-    async cafeJoin({ cafeUrl, nickname, captchaApiKey, answers } = {}) {
+    async cafeJoin({ cafeUrl, nickname, captchaValue, captchaKey: inputCaptchaKey, answers } = {}) {
       return withProviderSession(async () => {
         if (!cafeUrl) {
           const err = new Error('cafeUrl is required');
@@ -262,60 +262,41 @@ const createNaverProvider = ({ sessionPath, account }) => {
           finalNickname = `user${Math.floor(Math.random() * 9000 + 1000)}`;
         }
 
-        // 4. Handle captcha
-        let captchaKey = form.captchaKey;
-        let captchaValue = '';
+        // 4. Handle captcha — prompt user for manual input
+        let captchaKey = inputCaptchaKey || form.captchaKey;
+        let resolvedCaptchaValue = captchaValue || '';
 
-        if (form.needCaptcha) {
-          if (!captchaApiKey) {
+        if (form.needCaptcha && !resolvedCaptchaValue) {
+          return {
+            provider: 'naver',
+            mode: 'cafe-join',
+            status: 'captcha_required',
+            cafeId: id,
+            slug,
+            cafeName: form.cafeName,
+            captchaKey: form.captchaKey,
+            captchaImageUrl: form.captchaImageUrl,
+            nickname: finalNickname,
+            message: 'Captcha required. Open the captchaImageUrl in a browser, read the text, and re-run with --captcha-value <text> --captcha-key <key>',
+          };
+        }
+
+        // Validate captcha if provided
+        if (form.needCaptcha && resolvedCaptchaValue) {
+          const validateResult = await cafeApi.validateCaptcha(captchaKey, resolvedCaptchaValue);
+          if (!validateResult.valid) {
+            const newForm = await cafeApi.getJoinForm(id);
             return {
               provider: 'naver',
               mode: 'cafe-join',
-              status: 'captcha_required',
+              status: 'captcha_invalid',
               cafeId: id,
               slug,
               cafeName: form.cafeName,
-              captchaImageUrl: form.captchaImageUrl,
-              captchaKey: form.captchaKey,
-              message: 'Captcha is required. Provide --captcha-api-key for auto-solve or solve manually.',
-            };
-          }
-
-          // Auto-solve with 2Captcha (max 3 attempts)
-          let solved = false;
-          let captchaImageUrl = form.captchaImageUrl;
-
-          for (let attempt = 0; attempt < 3; attempt++) {
-            const imgBase64 = await cafeApi.downloadCaptchaImage(captchaImageUrl);
-            captchaValue = await cafeApi.solveCaptchaWith2Captcha(imgBase64, captchaApiKey);
-            const validateResult = await cafeApi.validateCaptcha(captchaKey, captchaValue);
-
-            if (validateResult.valid) {
-              solved = true;
-              break;
-            }
-
-            // Update captcha for retry
-            if (validateResult.captchaKey) {
-              captchaKey = validateResult.captchaKey;
-              captchaImageUrl = validateResult.captchaImageUrl;
-            } else {
-              const newForm = await cafeApi.getJoinForm(id);
-              captchaKey = newForm.captchaKey;
-              captchaImageUrl = newForm.captchaImageUrl;
-            }
-            captchaValue = '';
-          }
-
-          if (!solved) {
-            return {
-              provider: 'naver',
-              mode: 'cafe-join',
-              status: 'captcha_failed',
-              cafeId: id,
-              slug,
-              cafeName: form.cafeName,
-              message: 'Captcha solve failed after 3 attempts.',
+              captchaKey: newForm.captchaKey,
+              captchaImageUrl: newForm.captchaImageUrl,
+              nickname: finalNickname,
+              message: 'Captcha answer was wrong. Open the new captchaImageUrl, read the text, and retry with --captcha-value <text> --captcha-key <key>',
             };
           }
         }

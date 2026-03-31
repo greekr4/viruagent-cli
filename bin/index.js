@@ -290,7 +290,8 @@ addProviderOption(cafeJoinCmd);
 cafeJoinCmd
   .option('--cafe-url <url>', 'Cafe URL or slug')
   .option('--nickname <nick>', 'Nickname to use (default: auto)')
-  .option('--captcha-api-key <key>', '2Captcha API key for auto-solve')
+  .option('--captcha-value <text>', 'Captcha answer text (from AI agent reading the image)')
+  .option('--captcha-key <key>', 'Captcha key (returned by previous captcha_required response)')
   .option('--answers <answers>', 'Comma-separated answers for join questions')
   .action((opts) => execute('cafe-join', opts));
 

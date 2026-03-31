@@ -1,8 +1,49 @@
+# Dependencies
 /node_modules
+
+# Environment
 .env
 .env.*
+
+# OS
 .DS_Store
-AGENTS.md
-/.superset
+
+# Build / Output
+_workspace/
+
+# Sessions & Cache
+~/.viruagent-cli/
+
+# AI tool configs (keep .claude/ for harness)
+/.agent
+/.agents
+/.codebuddy
+/.commandcode
+/.continue
+/.crush
+/.factory
+/.goose
+/.kilocode
+/.kiro
+/.mcpjam
+/.mux
+/.neovate
 /.openchrome
+/.openhands
+/.pi
 /.playwright-mcp
+/.qoder
+/.qwen
+/.roo
+/.superset
+/.tabby
+/.trae
+/.windsurf-cascade
+/.zed
+
+# Generated / Test files
+AGENTS.md
+test-*.js
+okky-post.md
+reddit-post.md
+x-post.md

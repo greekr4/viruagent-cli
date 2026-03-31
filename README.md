@@ -28,7 +28,7 @@ Designed not for humans, but for **AI agents**.
 |----------|----------|-------|
 | **Tistory** | Publish, Draft, Categories, Image Upload | [Guide](docs/en/guide-tistory.md) |
 | **Naver Blog** | Publish, Categories, SE Editor, Image Upload | [Guide](docs/en/guide-naver.md) |
-| **Naver Cafe** | Cafe Join (auto-captcha), Write Post, Board List, Image Upload (slide/collage) | [Guide](docs/en/guide-naver-cafe.md) |
+| **Naver Cafe** | Cafe Join (captcha-free for 5 joins), Write Post, Board List, Image Upload (slide/collage) | [Guide](docs/en/guide-naver-cafe.md) |
 | **Instagram** | Like, Comment, Follow, Post, Profile, Feed, Rate Limit | [Guide](docs/en/guide-instagram.md) |
 | **X (Twitter)** | Tweet, Like, Retweet, Follow, Search, Timeline, Media Upload | [Guide](docs/en/guide-x.md) |
 | **Reddit** | Post, Comment, Upvote, Search, Subscribe, Subreddit | [Guide](docs/en/guide-reddit.md) |
@@ -136,14 +136,14 @@ npx viruagent-cli login --provider x --auth-token <token> --ct0 <ct0>
 | "Search X for AI tools" | search → return results |
 | "Like and follow IT devs on X" | search → like + follow (with delays) |
 | "Show my X timeline" | getFeed → show latest tweets |
-| "Join this Naver cafe" | cafe-id → cafe-join (auto-captcha) |
+| "Join this Naver cafe" | cafe-id → cafe-join (captcha-free for 5 joins) |
 | "Write a post on Naver cafe" | cafe-list → cafe-write |
 
 ## Platform Guides
 
 - **[Tistory Guide](docs/en/guide-tistory.md)** — Blog publishing, image upload, categories
 - **[Naver Blog Guide](docs/en/guide-naver.md)** — SE Editor, blog publishing, image upload
-- **[Naver Cafe Guide](docs/en/guide-naver-cafe.md)** — Cafe join (auto-captcha), write post, slide/collage images
+- **[Naver Cafe Guide](docs/en/guide-naver-cafe.md)** — Cafe join (captcha-free for 5 joins), write post, slide/collage images
 - **[Instagram Guide](docs/en/guide-instagram.md)** — 18 API methods, rate limits, AI commenting
 - **[X (Twitter) Guide](docs/en/guide-x.md)** — GraphQL API, dynamic queryId sync, rate limits
 
@@ -167,7 +167,7 @@ npx viruagent-cli login --provider x --auth-token <token> --ct0 <ct0>
 | Rate Limiting | Per-user persistent counters with random delays |
 | Image Search | DuckDuckGo, Wikimedia Commons |
 | Naver Editor | SE Editor component model + RabbitWrite API |
-| Naver Cafe API | Pure HTTP (join, write, board list, 2Captcha auto-solve) |
+| Naver Cafe API | Pure HTTP (join, write, board list, manual captcha) |
 | Output Format | JSON envelope (`{ ok, data }` / `{ ok, error, hint }`) |
 
 ## Contributing

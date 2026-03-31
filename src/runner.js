@@ -346,7 +346,8 @@ const runCommand = async (command, opts = {}) => {
       return withProvider(() => provider.cafeJoin({
         cafeUrl: opts.cafeUrl,
         nickname: opts.nickname || undefined,
-        captchaApiKey: opts.captchaApiKey || undefined,
+        captchaValue: opts.captchaValue || undefined,
+        captchaKey: opts.captchaKey || undefined,
         answers: opts.answers ? parseList(opts.answers) : undefined,
       }))();
 

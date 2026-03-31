@@ -198,39 +198,6 @@ const createCafeApiClient = ({ sessionPath }) => {
     return buffer.toString('base64');
   };
 
-  const solveCaptchaWith2Captcha = async (imageBase64, apiKey) => {
-    const submitRes = await fetch('https://2captcha.com/in.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        key: apiKey,
-        method: 'base64',
-        body: imageBase64,
-        json: '1',
-      }),
-    });
-    const submitData = await submitRes.json();
-    if (submitData.status !== 1) {
-      throw createError('CAPTCHA_SUBMIT_FAILED', `2Captcha submit failed: ${submitData.request}`);
-    }
-
-    const captchaId = submitData.request;
-
-    // Poll for result (max 120s)
-    for (let i = 0; i < 24; i++) {
-      await new Promise((r) => setTimeout(r, 5000));
-      const pollRes = await fetch(
-        `https://2captcha.com/res.php?key=${apiKey}&action=get&id=${captchaId}&json=1`,
-      );
-      const pollData = await pollRes.json();
-      if (pollData.status === 1) return pollData.request;
-      if (pollData.request !== 'CAPCHA_NOT_READY') {
-        throw createError('CAPTCHA_POLL_FAILED', `2Captcha poll failed: ${pollData.request}`);
-      }
-    }
-    throw createError('CAPTCHA_TIMEOUT', '2Captcha timeout (120s)');
-  };
-
   const submitJoin = async (cafeId, { alimCode, clubTempId, applyPayload }) => {
     const cookieStr = getCookieStr();
     const queryParams = new URLSearchParams({
@@ -582,7 +549,6 @@ const createCafeApiClient = ({ sessionPath }) => {
     checkNickname,
     validateCaptcha,
     downloadCaptchaImage,
-    solveCaptchaWith2Captcha,
     submitJoin,
     getBoardList,
     getEditorInfo,

@@ -7,7 +7,7 @@ Pure HTTP API for Naver Cafe operations. No browser required (except for initial
 | Command | Description |
 |---------|-------------|
 | `cafe-id` | Extract numeric cafeId from a cafe URL or slug |
-| `cafe-join` | Join a cafe (auto-captcha with 2Captcha) |
+| `cafe-join` | Join a cafe (manual captcha input when required) |
 | `cafe-list` | List writable boards in a cafe |
 | `cafe-write` | Write a post to a cafe board |
 
@@ -30,19 +30,21 @@ npx viruagent-cli cafe-id --provider naver --cafe-url https://cafe.naver.com/inm
 
 ## cafe-join
 
-Join a Naver cafe. Handles captcha automatically when `--captcha-api-key` is provided.
+Join a Naver cafe. When a captcha challenge appears, the user must read the image and provide the text manually.
+
+> **Tip**: Mobile version (`x-cafe-product: mweb`) join **skips captcha for the first 5 attempts.** Since viruagent-cli uses mobile headers, most cafes can be joined without captcha.
 
 ```bash
-# Basic join
+# Basic join (captcha-free for first 5 joins)
 npx viruagent-cli cafe-join --provider naver --cafe-url inmycar
-
-# With auto-captcha
-npx viruagent-cli cafe-join --provider naver --cafe-url inmycar \
-  --captcha-api-key <2captcha_key>
 
 # With custom nickname
 npx viruagent-cli cafe-join --provider naver --cafe-url inmycar \
-  --nickname "MyNickname" --captcha-api-key <key>
+  --nickname "MyNickname"
+
+# When captcha appears: open captchaImageUrl in browser, read text, re-run
+npx viruagent-cli cafe-join --provider naver --cafe-url inmycar \
+  --captcha-value "ABC123" --captcha-key <captcha_key>
 ```
 
 ### Options
@@ -51,8 +53,16 @@ npx viruagent-cli cafe-join --provider naver --cafe-url inmycar \
 |------|----------|-------------|---------|
 | `--cafe-url` | Yes | Cafe URL or slug | - |
 | `--nickname` | No | Nickname to use | Auto-generated |
-| `--captcha-api-key` | No | 2Captcha API key | - |
+| `--captcha-value` | No | Captcha image text (user input) | - |
+| `--captcha-key` | No | Captcha session key (from captcha_required response) | - |
 | `--answers` | No | Comma-separated answers for join questions | All "yes" |
+
+### Captcha Flow
+
+1. Run `cafe-join` → returns `captcha_required` status if captcha is needed
+2. Open `captchaImageUrl` from the response in a browser to read the text
+3. Re-run with `--captcha-value <text> --captcha-key <key>`
+4. If wrong, `captcha_invalid` is returned with a new image URL → repeat
 
 ### Join Types
 
@@ -130,7 +140,7 @@ npx viruagent-cli cafe-write --provider naver \
 | `NOT_LOGGED_IN` | Run `login --provider naver` first |
 | `CAFE_ID_NOT_FOUND` | Check cafe URL exists |
 | `ALREADY_JOINED` | Already a member |
-| `CAPTCHA_REQUIRED` | Provide `--captcha-api-key` |
+| `CAPTCHA_REQUIRED` | Open `captchaImageUrl` and re-run with `--captcha-value`/`--captcha-key` |
 | `EDITOR_INIT_FAILED` | No write permission — check membership level |
 | `CAFE_WRITE_FAILED` | API error — check error message |
 
@@ -143,8 +153,8 @@ npx viruagent-cli login --provider naver --username <id> --password <pw>
 # 2. Find cafe ID
 npx viruagent-cli cafe-id --provider naver --cafe-url mycafe
 
-# 3. Join cafe
-npx viruagent-cli cafe-join --provider naver --cafe-url mycafe --captcha-api-key <key>
+# 3. Join cafe (captcha-free for first 5 joins via mobile headers)
+npx viruagent-cli cafe-join --provider naver --cafe-url mycafe
 
 # 4. List boards
 npx viruagent-cli cafe-list --provider naver --cafe-id 12345
