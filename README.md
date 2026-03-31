@@ -24,14 +24,14 @@ Designed not for humans, but for **AI agents**.
 
 ## Supported Platforms
 
-| Platform | Login | Features | Guide |
-|----------|-------|----------|-------|
-| **Tistory** | Playwright (Kakao) | Publish, Draft, Categories, Image Upload | [Guide](docs/en/guide-tistory.md) |
-| **Naver Blog** | Playwright (Naver) | Publish, Categories, SE Editor, Image Upload | [Guide](docs/en/guide-naver.md) |
-| **Naver Cafe** | HTTP (No Browser) | Cafe Join (auto-captcha), Write Post, Board List | [Guide](docs/en/guide-naver.md) |
-| **Instagram** | HTTP (No Browser) | Like, Comment, Follow, Post, Profile, Feed, Rate Limit | [Guide](docs/en/guide-instagram.md) |
-| **X (Twitter)** | HTTP (Cookie Auth) | Tweet, Like, Retweet, Follow, Search, Timeline, Media Upload | [Guide](docs/en/guide-x.md) |
-| **Reddit** | OAuth2 / Cookie | Post, Comment, Upvote, Search, Subscribe, Subreddit | [Guide](docs/en/guide-reddit.md) |
+| Platform | Features | Guide |
+|----------|----------|-------|
+| **Tistory** | Publish, Draft, Categories, Image Upload | [Guide](docs/en/guide-tistory.md) |
+| **Naver Blog** | Publish, Categories, SE Editor, Image Upload | [Guide](docs/en/guide-naver.md) |
+| **Naver Cafe** | Cafe Join (auto-captcha), Write Post, Board List, Image Upload (slide/collage) | [Guide](docs/en/guide-naver-cafe.md) |
+| **Instagram** | Like, Comment, Follow, Post, Profile, Feed, Rate Limit | [Guide](docs/en/guide-instagram.md) |
+| **X (Twitter)** | Tweet, Like, Retweet, Follow, Search, Timeline, Media Upload | [Guide](docs/en/guide-x.md) |
+| **Reddit** | Post, Comment, Upvote, Search, Subscribe, Subreddit | [Guide](docs/en/guide-reddit.md) |
 
 ## How It Works
 
@@ -143,6 +143,7 @@ npx viruagent-cli login --provider x --auth-token <token> --ct0 <ct0>
 
 - **[Tistory Guide](docs/en/guide-tistory.md)** — Blog publishing, image upload, categories
 - **[Naver Blog Guide](docs/en/guide-naver.md)** — SE Editor, blog publishing, image upload
+- **[Naver Cafe Guide](docs/en/guide-naver-cafe.md)** — Cafe join (auto-captcha), write post, slide/collage images
 - **[Instagram Guide](docs/en/guide-instagram.md)** — 18 API methods, rate limits, AI commenting
 - **[X (Twitter) Guide](docs/en/guide-x.md)** — GraphQL API, dynamic queryId sync, rate limits
 

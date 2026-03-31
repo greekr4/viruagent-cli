@@ -24,13 +24,13 @@
 
 ## 지원 플랫폼
 
-| 플랫폼 | 로그인 | 주요 기능 | 가이드 |
-|--------|--------|----------|--------|
-| **Tistory** | Playwright (카카오) | 글 발행, 임시저장, 카테고리, 이미지 업로드 | [가이드](docs/ko/guide-tistory.md) |
-| **Naver Blog** | Playwright (네이버) | 글 발행, 카테고리, SE Editor, 이미지 업로드 | [가이드](docs/ko/guide-naver.md) |
-| **Naver Cafe** | HTTP (브라우저 불필요) | 카페 가입 (캡차 자동해결), 글쓰기, 게시판 조회 | [가이드](docs/ko/guide-naver.md) |
-| **Instagram** | HTTP (브라우저 불필요) | 좋아요, 댓글, 팔로우, 포스팅, 프로필, 피드 | [가이드](docs/ko/guide-instagram.md) |
-| **X (Twitter)** | HTTP (쿠키 인증) | 트윗, 좋아요, 리트윗, 팔로우, 검색, 타임라인, 미디어 업로드 | [가이드](docs/ko/guide-x.md) |
+| 플랫폼 | 주요 기능 | 가이드 |
+|--------|----------|--------|
+| **Tistory** | 글 발행, 임시저장, 카테고리, 이미지 업로드 | [가이드](docs/ko/guide-tistory.md) |
+| **Naver Blog** | 글 발행, 카테고리, SE Editor, 이미지 업로드 | [가이드](docs/ko/guide-naver.md) |
+| **Naver Cafe** | 카페 가입 (캡차 자동해결), 글쓰기, 게시판 조회, 이미지 업로드 (슬라이드/콜라주) | [가이드](docs/ko/guide-naver-cafe.md) |
+| **Instagram** | 좋아요, 댓글, 팔로우, 포스팅, 프로필, 피드 | [가이드](docs/ko/guide-instagram.md) |
+| **X (Twitter)** | 트윗, 좋아요, 리트윗, 팔로우, 검색, 타임라인, 미디어 업로드 | [가이드](docs/ko/guide-x.md) |
 
 ## 동작 방식
 
@@ -142,6 +142,7 @@ npx viruagent-cli login --provider x --auth-token <토큰> --ct0 <ct0>
 
 - **[Tistory 가이드](docs/ko/guide-tistory.md)** — 블로그 발행, 이미지 업로드, 카테고리
 - **[Naver Blog 가이드](docs/ko/guide-naver.md)** — SE Editor, 블로그 발행, 이미지 업로드
+- **[Naver Cafe 가이드](docs/ko/guide-naver-cafe.md)** — 카페 가입 (캡차 자동해결), 글쓰기, 슬라이드/콜라주
 - **[Instagram 가이드](docs/ko/guide-instagram.md)** — 18개 API 메서드, rate limit 규칙, AI 댓글
 - **[X (Twitter) 가이드](docs/ko/guide-x.md)** — GraphQL API, queryId 동적 동기화, rate limit 규칙
 
