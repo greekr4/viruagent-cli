@@ -12,17 +12,17 @@ const randomDelay = (minSec, maxSec) => {
 // ──────────────────────────────────────────────────────────────
 
 const DELAY = {
-  publish:  [120, 300],  // 2~5min
-  like:     [15, 20],    // 15~20s
-  comment:  [120, 300],  // 2~5min
+  publish:  [30, 60],    // 30s~1min
+  like:     [5, 15],     // 5~15s
+  comment:  [30, 60],    // 30s~1min
   follow:   [30, 30],    // 30s
   unfollow: [60, 120],   // 1~2min
 };
 
 const HOURLY_LIMIT = {
-  publish: 10,
-  like: 15,
-  comment: 5,
+  publish: 30,
+  like: 60,
+  comment: 15,
   follow: 15,
   unfollow: 10,
 };
@@ -264,7 +264,7 @@ const createThreadsApiClient = ({ sessionPath }) => {
     });
   };
 
-  const publishTextThread = (text, replyToId) => withDelay('publish', async () => {
+  const publishTextThread = (text, replyToId, { aiLabel = false } = {}) => withDelay('publish', async () => {
     const userId = getUserIdFromSession();
     const uploadId = Date.now().toString();
     const deviceId = getDeviceId();
@@ -285,6 +285,10 @@ const createThreadsApiClient = ({ sessionPath }) => {
         reply_control: 0,
         reply_id: replyToId,
       });
+    }
+
+    if (aiLabel) {
+      payload.gen_ai_detection_method = 'SELF_DISCLOSURE_FLOW';
     }
 
     const body = `signed_body=SIGNATURE.${encodeURIComponent(JSON.stringify(payload))}`;
@@ -338,7 +342,7 @@ const createThreadsApiClient = ({ sessionPath }) => {
     return uploadId;
   };
 
-  const publishImageThread = (uploadId, text) => withDelay('publish', async () => {
+  const publishImageThread = (uploadId, text, { aiLabel = false } = {}) => withDelay('publish', async () => {
     const userId = getUserIdFromSession();
     const deviceId = getDeviceId();
 
@@ -358,6 +362,10 @@ const createThreadsApiClient = ({ sessionPath }) => {
         scene_capture_type: '',
       }],
     };
+
+    if (aiLabel) {
+      payload.gen_ai_detection_method = 'SELF_DISCLOSURE_FLOW';
+    }
 
     const body = `signed_body=SIGNATURE.${encodeURIComponent(JSON.stringify(payload))}`;
 

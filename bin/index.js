@@ -75,6 +75,7 @@ publishCmd
   .option('--minimum-image-count <n>', 'Minimum required images', '1')
   .option('--no-auto-upload-images', 'Disable automatic image uploading')
   .option('--no-enforce-system-prompt', 'Disable system prompt enforcement')
+  .option('--ai-label', 'Mark post as AI-generated (Threads only)')
   .option('--subreddit <name>', 'Subreddit name (Reddit)')
   .option('--kind <type>', 'Post kind: self or link (Reddit)', 'self')
   .option('--flair <id>', 'Flair template ID (Reddit)')

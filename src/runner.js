@@ -164,6 +164,7 @@ const runCommand = async (command, opts = {}) => {
           subreddit: opts.subreddit || undefined,
           kind: opts.kind || undefined,
           flair: opts.flair || undefined,
+          aiLabel: opts.aiLabel || false,
         })
       )();
     }

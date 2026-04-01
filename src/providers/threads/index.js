@@ -67,9 +67,10 @@ const createThreadsProvider = ({ sessionPath, account }) => {
       return result;
     },
 
-    async publish({ content, imageUrls, imageUrl, imagePath, replyTo, caption } = {}) {
+    async publish({ content, imageUrls, imageUrl, imagePath, replyTo, caption, aiLabel } = {}) {
       return withProviderSession(async () => {
         const text = content || caption || '';
+        const opts = { aiLabel: !!aiLabel };
 
         // Image thread
         let resolvedImageUrl = imageUrl;
@@ -93,7 +94,7 @@ const createThreadsProvider = ({ sessionPath, account }) => {
             imageBuffer = Buffer.from(await res.arrayBuffer());
           }
           const uploadId = await api.uploadImage(imageBuffer);
-          const result = await api.publishImageThread(uploadId, text);
+          const result = await api.publishImageThread(uploadId, text, opts);
           return { provider: 'threads', mode: 'publish', ...result };
         }
 
@@ -101,7 +102,7 @@ const createThreadsProvider = ({ sessionPath, account }) => {
         if (!text) {
           throw new Error('content is required for text threads.');
         }
-        const result = await api.publishTextThread(text, replyTo);
+        const result = await api.publishTextThread(text, replyTo, opts);
         return { provider: 'threads', mode: 'publish', ...result };
       });
     },
