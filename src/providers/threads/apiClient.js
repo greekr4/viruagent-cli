@@ -449,6 +449,75 @@ const createThreadsApiClient = ({ sessionPath }) => {
     }));
   };
 
+  // Pure repost (no caption) — POST /api/v1/repost/create_repost/
+  const repostThread = (postId) => withDelay('like', async () => {
+    const userId = getUserIdFromSession();
+    const res = await request(`${BASE_URL}/api/v1/repost/create_repost/`, {
+      method: 'POST',
+      body: `media_id=${postId}&_uid=${userId}`,
+      allowError: true,
+    });
+    const data = await res.json();
+    if (data.status !== 'ok') {
+      throw new Error(`Repost failed: ${data.message || JSON.stringify(data)}`);
+    }
+    return {
+      repostId: data.repost_id,
+      status: data.status,
+    };
+  });
+
+  const unrepostThread = (repostId) => withDelay('like', async () => {
+    const userId = getUserIdFromSession();
+    const res = await request(`${BASE_URL}/api/v1/repost/delete_text_app_repost/`, {
+      method: 'POST',
+      body: `repost_id=${repostId}&_uid=${userId}`,
+      allowError: true,
+    });
+    const data = await res.json();
+    if (data.status !== 'ok') {
+      throw new Error(`Unrepost failed: ${data.message || JSON.stringify(data)}`);
+    }
+    return { status: data.status };
+  });
+
+  // Quote-repost: publishes a new post with the original embedded
+  const quoteThread = (postId, caption) => withDelay('publish', async () => {
+    if (!caption) throw new Error('quoteThread requires a caption.');
+    const userId = getUserIdFromSession();
+    const deviceId = getDeviceId();
+    const uploadId = Date.now().toString();
+
+    const payload = {
+      publish_mode: 'text_post',
+      text_post_app_info: JSON.stringify({ reply_control: 0, repost_post_id: postId }),
+      timezone_offset: '32400',
+      source_type: '4',
+      caption,
+      upload_id: uploadId,
+      device_id: deviceId,
+      _uid: userId,
+    };
+
+    const body = `signed_body=SIGNATURE.${encodeURIComponent(JSON.stringify(payload))}`;
+    const res = await request(`${BASE_URL}/api/v1/media/configure_text_only_post/`, {
+      method: 'POST',
+      body,
+      allowError: true,
+    });
+
+    const data = await res.json();
+    if (data.status !== 'ok') {
+      throw new Error(`Quote repost failed: ${data.message || JSON.stringify(data)}`);
+    }
+    return {
+      id: data.media?.pk || data.media?.id,
+      code: data.media?.code,
+      permalink: data.media?.permalink,
+      status: data.status,
+    };
+  });
+
   const deleteThread = async (postId) => {
     const res = await request(
       `${BASE_URL}/api/v1/media/${postId}/delete/?media_type=TEXT_POST`,
@@ -481,6 +550,9 @@ const createThreadsApiClient = ({ sessionPath }) => {
     unfollowUser,
     searchUsers,
     deleteThread,
+    repostThread,
+    unrepostThread,
+    quoteThread,
     resetState,
     getRateLimitStatus: () => {
       const status = {};
