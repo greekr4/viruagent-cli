@@ -73,14 +73,20 @@ const createThreadsProvider = ({ sessionPath, account }) => {
 
         // Image thread
         let resolvedImageUrl = imageUrl;
-        if (!resolvedImageUrl && !imagePath && imageUrls?.length > 0) {
-          resolvedImageUrl = imageUrls[0];
+        let resolvedImagePath = imagePath;
+        if (!resolvedImageUrl && !resolvedImagePath && imageUrls?.length > 0) {
+          const first = imageUrls[0];
+          if (fs.existsSync(first)) {
+            resolvedImagePath = first;
+          } else {
+            resolvedImageUrl = first;
+          }
         }
 
-        if (resolvedImageUrl || imagePath) {
+        if (resolvedImageUrl || resolvedImagePath) {
           let imageBuffer;
-          if (imagePath) {
-            imageBuffer = fs.readFileSync(imagePath);
+          if (resolvedImagePath) {
+            imageBuffer = fs.readFileSync(resolvedImagePath);
           } else {
             const res = await fetch(resolvedImageUrl);
             if (!res.ok) throw new Error(`Image download failed: ${res.status}`);
