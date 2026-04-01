@@ -110,6 +110,18 @@ const runCommand = async (command, opts = {}) => {
     return { provider: providerName, ...result };
   };
 
+  const callProviderMethod = (methodName, args, commandName = command) => {
+    if (typeof provider[methodName] !== 'function') {
+      throw createError(
+        'UNSUPPORTED_OPERATION',
+        `${commandName} is not supported for provider: ${providerName}`,
+        'viruagent-cli --spec'
+      );
+    }
+
+    return withProvider(() => provider[methodName](args))();
+  };
+
   switch (command) {
     case 'status':
     case 'auth-status':
@@ -145,7 +157,7 @@ const runCommand = async (command, opts = {}) => {
           thumbnail: opts.thumbnail || undefined,
           relatedImageKeywords: parseList(opts.relatedImageKeywords),
           enforceSystemPrompt: opts.enforceSystemPrompt !== false,
-          imageUrls: parseList(opts.imageUrls),
+          imageUrls: [...(opts.imageFile ? [opts.imageFile] : []), ...parseList(opts.imageUrls)],
           imageUploadLimit: parseIntOrNull(opts.imageUploadLimit) || 1,
           minimumImageCount: parseIntOrNull(opts.minimumImageCount) || 1,
           autoUploadImages: opts.autoUploadImages !== false,
@@ -167,7 +179,7 @@ const runCommand = async (command, opts = {}) => {
           content,
           relatedImageKeywords: parseList(opts.relatedImageKeywords),
           enforceSystemPrompt: opts.enforceSystemPrompt !== false,
-          imageUrls: parseList(opts.imageUrls),
+          imageUrls: [...(opts.imageFile ? [opts.imageFile] : []), ...parseList(opts.imageUrls)],
           imageUploadLimit: parseIntOrNull(opts.imageUploadLimit) || 1,
           minimumImageCount: parseIntOrNull(opts.minimumImageCount) || 1,
           autoUploadImages: opts.autoUploadImages !== false,
@@ -178,30 +190,26 @@ const runCommand = async (command, opts = {}) => {
     }
 
     case 'list-categories':
-      return withProvider(() => provider.listCategories())();
+      return callProviderMethod('listCategories');
 
     case 'list-posts':
-      return withProvider(() =>
-        provider.listPosts({
-          username: opts.username || undefined,
-          limit: parseIntOrNull(opts.limit) || 20,
-        })
-      )();
+      return callProviderMethod('listPosts', {
+        username: opts.username || undefined,
+        limit: parseIntOrNull(opts.limit) || 20,
+      });
 
     case 'read-post': {
       if (!opts.postId) {
         throw createError('INVALID_POST_ID', 'read-post requires --post-id', 'viruagent-cli read-post --spec');
       }
-      return withProvider(() =>
-        provider.getPost({
-          postId: opts.postId,
-          includeDraft: Boolean(opts.includeDraft),
-        })
-      )();
+      return callProviderMethod('getPost', {
+        postId: opts.postId,
+        includeDraft: Boolean(opts.includeDraft),
+      }, 'read-post');
     }
 
     case 'logout':
-      return withProvider(() => provider.logout())();
+      return callProviderMethod('logout');
 
     // ── Instagram-specific (works with other providers if the method exists) ──
 
@@ -209,52 +217,52 @@ const runCommand = async (command, opts = {}) => {
       if (!opts.username) {
         throw createError('MISSING_PARAM', 'get-profile requires --username');
       }
-      return withProvider(() => provider.getProfile({ username: opts.username }))();
+      return callProviderMethod('getProfile', { username: opts.username });
 
     case 'get-feed':
-      return withProvider(() => provider.getFeed())();
+      return callProviderMethod('getFeed');
 
     case 'like':
       if (!opts.postId) {
         throw createError('MISSING_PARAM', 'like requires --post-id');
       }
-      return withProvider(() => provider.like({ postId: opts.postId }))();
+      return callProviderMethod('like', { postId: opts.postId });
 
     case 'unlike':
       if (!opts.postId) {
         throw createError('MISSING_PARAM', 'unlike requires --post-id');
       }
-      return withProvider(() => provider.unlike({ postId: opts.postId }))();
+      return callProviderMethod('unlike', { postId: opts.postId });
 
     case 'comment':
       if (!opts.postId || !opts.text) {
         throw createError('MISSING_PARAM', 'comment requires --post-id and --text');
       }
-      return withProvider(() => provider.comment({ postId: opts.postId, text: opts.text }))();
+      return callProviderMethod('comment', { postId: opts.postId, text: opts.text });
 
     case 'follow':
       if (!opts.username) {
         throw createError('MISSING_PARAM', 'follow requires --username');
       }
-      return withProvider(() => provider.follow({ username: opts.username }))();
+      return callProviderMethod('follow', { username: opts.username });
 
     case 'unfollow':
       if (!opts.username) {
         throw createError('MISSING_PARAM', 'unfollow requires --username');
       }
-      return withProvider(() => provider.unfollow({ username: opts.username }))();
+      return callProviderMethod('unfollow', { username: opts.username });
 
     case 'like-comment':
       if (!opts.commentId) {
         throw createError('MISSING_PARAM', 'like-comment requires --comment-id');
       }
-      return withProvider(() => provider.likeComment({ commentId: opts.commentId }))();
+      return callProviderMethod('likeComment', { commentId: opts.commentId }, 'like-comment');
 
     case 'unlike-comment':
       if (!opts.commentId) {
         throw createError('MISSING_PARAM', 'unlike-comment requires --comment-id');
       }
-      return withProvider(() => provider.unlikeComment({ commentId: opts.commentId }))();
+      return callProviderMethod('unlikeComment', { commentId: opts.commentId }, 'unlike-comment');
 
     case 'send-dm':
       if (!opts.username && !opts.threadId) {
@@ -263,31 +271,35 @@ const runCommand = async (command, opts = {}) => {
       if (!opts.text) {
         throw createError('MISSING_PARAM', 'send-dm requires --text');
       }
-      return withProvider(() => provider.sendDm({ username: opts.username, threadId: opts.threadId, text: opts.text }))();
+      return callProviderMethod('sendDm', {
+        username: opts.username,
+        threadId: opts.threadId,
+        text: opts.text,
+      }, 'send-dm');
 
     case 'list-messages':
       if (!opts.threadId) {
         throw createError('MISSING_PARAM', 'list-messages requires --thread-id');
       }
-      return withProvider(() => provider.listMessages({ threadId: opts.threadId }))();
+      return callProviderMethod('listMessages', { threadId: opts.threadId }, 'list-messages');
 
     case 'list-comments':
       if (!opts.postId) {
         throw createError('MISSING_PARAM', 'list-comments requires --post-id');
       }
-      return withProvider(() => provider.listComments({ postId: opts.postId }))();
+      return callProviderMethod('listComments', { postId: opts.postId }, 'list-comments');
 
     case 'analyze-post':
       if (!opts.postId) {
         throw createError('MISSING_PARAM', 'analyze-post requires --post-id');
       }
-      return withProvider(() => provider.analyzePost({ postId: opts.postId }))();
+      return callProviderMethod('analyzePost', { postId: opts.postId }, 'analyze-post');
 
     case 'resolve-challenge':
-      return withProvider(() => provider.resolveChallenge())();
+      return callProviderMethod('resolveChallenge');
 
     case 'rate-limit-status':
-      return withProvider(() => Promise.resolve(provider.rateLimitStatus()))();
+      return callProviderMethod('rateLimitStatus');
 
     // ── X (Twitter)-specific commands ──
 
@@ -295,41 +307,47 @@ const runCommand = async (command, opts = {}) => {
       if (!opts.query) {
         throw createError('MISSING_PARAM', 'search requires --query');
       }
-      return withProvider(() => provider.search({ query: opts.query, limit: parseIntOrNull(opts.limit) || 20 }))();
+      return callProviderMethod('search', {
+        query: opts.query,
+        limit: parseIntOrNull(opts.limit) || 20,
+      });
 
     case 'retweet':
       if (!opts.postId) {
         throw createError('MISSING_PARAM', 'retweet requires --post-id');
       }
-      return withProvider(() => provider.retweet({ postId: opts.postId }))();
+      return callProviderMethod('retweet', { postId: opts.postId });
 
     case 'unretweet':
       if (!opts.postId) {
         throw createError('MISSING_PARAM', 'unretweet requires --post-id');
       }
-      return withProvider(() => provider.unretweet({ postId: opts.postId }))();
+      return callProviderMethod('unretweet', { postId: opts.postId });
 
     case 'delete':
     case 'delete-post':
       if (!opts.postId) {
         throw createError('MISSING_PARAM', 'delete requires --post-id');
       }
-      return withProvider(() => provider.delete ? provider.delete({ postId: opts.postId }) : provider.deletePost({ postId: opts.postId }))();
+      if (typeof provider.delete === 'function') {
+        return callProviderMethod('delete', { postId: opts.postId }, 'delete-post');
+      }
+      return callProviderMethod('deletePost', { postId: opts.postId }, 'delete-post');
 
     case 'subscribe':
       if (!opts.subreddit) {
         throw createError('MISSING_PARAM', 'subscribe requires --subreddit');
       }
-      return withProvider(() => provider.subscribe({ subreddit: opts.subreddit }))();
+      return callProviderMethod('subscribe', { subreddit: opts.subreddit });
 
     case 'unsubscribe':
       if (!opts.subreddit) {
         throw createError('MISSING_PARAM', 'unsubscribe requires --subreddit');
       }
-      return withProvider(() => provider.unsubscribe({ subreddit: opts.subreddit }))();
+      return callProviderMethod('unsubscribe', { subreddit: opts.subreddit });
 
     case 'sync-operations':
-      return withProvider(() => provider.syncOperations())();
+      return callProviderMethod('syncOperations');
 
     // ── Cafe commands (Naver) ──
 
@@ -337,28 +355,28 @@ const runCommand = async (command, opts = {}) => {
       if (!opts.cafeUrl) {
         throw createError('MISSING_PARAM', 'cafe-id requires --cafe-url');
       }
-      return withProvider(() => provider.cafeId({ cafeUrl: opts.cafeUrl }))();
+      return callProviderMethod('cafeId', { cafeUrl: opts.cafeUrl }, 'cafe-id');
 
     case 'cafe-join':
       if (!opts.cafeUrl) {
         throw createError('MISSING_PARAM', 'cafe-join requires --cafe-url');
       }
-      return withProvider(() => provider.cafeJoin({
+      return callProviderMethod('cafeJoin', {
         cafeUrl: opts.cafeUrl,
         nickname: opts.nickname || undefined,
         captchaValue: opts.captchaValue || undefined,
         captchaKey: opts.captchaKey || undefined,
         answers: opts.answers ? parseList(opts.answers) : undefined,
-      }))();
+      }, 'cafe-join');
 
     case 'cafe-list':
       if (!opts.cafeId && !opts.cafeUrl) {
         throw createError('MISSING_PARAM', 'cafe-list requires --cafe-id or --cafe-url');
       }
-      return withProvider(() => provider.cafeList({
+      return callProviderMethod('cafeList', {
         cafeId: opts.cafeId || undefined,
         cafeUrl: opts.cafeUrl || undefined,
-      }))();
+      }, 'cafe-list');
 
     case 'cafe-write': {
       const cafeContent = readContent(opts);
@@ -371,16 +389,16 @@ const runCommand = async (command, opts = {}) => {
       if (!opts.boardId) {
         throw createError('MISSING_PARAM', 'cafe-write requires --board-id');
       }
-      return withProvider(() => provider.cafeWrite({
+      return callProviderMethod('cafeWrite', {
         cafeId: opts.cafeId || undefined,
         cafeUrl: opts.cafeUrl || undefined,
         boardId: opts.boardId,
         title: opts.title || '',
         content: cafeContent,
         tags: opts.tags || '',
-        imageUrls: parseList(opts.imageUrls),
+        imageUrls: [...(opts.imageFile ? [opts.imageFile] : []), ...parseList(opts.imageUrls)],
         imageLayout: opts.imageLayout || undefined,
-      }))();
+      }, 'cafe-write');
     }
 
     default:

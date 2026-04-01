@@ -7,7 +7,7 @@ const {
   mapNaverVisibility,
 } = require('./utils');
 const { convertHtmlToEditorComponents } = require('./editorConvert');
-const { collectAndUploadImages } = require('./imageUpload');
+const { collectAndUploadImages, fetchImageBuffer } = require('./imageUpload');
 const { createNaverWithProviderSession } = require('./session');
 const { createAskForAuthentication } = require('./auth');
 
@@ -423,10 +423,8 @@ const createNaverProvider = ({ sessionPath, account }) => {
           const uploaded = [];
           for (let i = 0; i < urls.length; i++) {
             try {
-              const imgRes = await fetch(urls[i]);
-              if (!imgRes.ok) continue;
-              const buf = Buffer.from(await imgRes.arrayBuffer());
-              const fileName = `image_${i + 1}.jpg`;
+              const { buffer: buf, filename } = await fetchImageBuffer(urls[i]);
+              const fileName = filename || `image_${i + 1}.jpg`;
               const imgData = await cafeApi.uploadImage(sessionKey, buf, fileName, userId);
               if (i === 0) imgData.represent = true;
               uploaded.push(imgData);

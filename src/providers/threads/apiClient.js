@@ -13,9 +13,9 @@ const randomDelay = (minSec, maxSec) => {
 
 const DELAY = {
   publish:  [120, 300],  // 2~5min
-  like:     [20, 40],    // 20~40s
+  like:     [15, 20],    // 15~20s
   comment:  [120, 300],  // 2~5min
-  follow:   [60, 120],   // 1~2min
+  follow:   [30, 30],    // 30s
   unfollow: [60, 120],   // 1~2min
 };
 

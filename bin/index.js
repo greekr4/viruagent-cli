@@ -70,6 +70,7 @@ publishCmd
   .option('--thumbnail <url>', 'Thumbnail image URL')
   .option('--related-image-keywords <keywords>', 'Comma-separated image search keywords')
   .option('--image-urls <urls>', 'Comma-separated image URLs')
+  .option('--image-file <path>', 'Local image file path to upload')
   .option('--image-upload-limit <n>', 'Max images to upload', '1')
   .option('--minimum-image-count <n>', 'Minimum required images', '1')
   .option('--no-auto-upload-images', 'Disable automatic image uploading')
@@ -92,6 +93,7 @@ saveDraftCmd
   .option('--category <id>', 'Category ID (integer)')
   .option('--related-image-keywords <keywords>', 'Comma-separated image search keywords')
   .option('--image-urls <urls>', 'Comma-separated image URLs')
+  .option('--image-file <path>', 'Local image file path to upload')
   .option('--image-upload-limit <n>', 'Max images to upload', '1')
   .option('--minimum-image-count <n>', 'Minimum required images', '1')
   .option('--no-auto-upload-images', 'Disable automatic image uploading')
@@ -317,6 +319,7 @@ cafeWriteCmd
   .option('--content-file <path>', 'Path to HTML content file')
   .option('--tags <tags>', 'Comma-separated tags')
   .option('--image-urls <urls>', 'Comma-separated image URLs to upload')
+  .option('--image-file <path>', 'Local image file path to upload')
   .option('--image-layout <layout>', 'Image layout: default, slide, collage', 'default')
   .action((opts) => execute('cafe-write', opts));
 

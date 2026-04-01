@@ -36,6 +36,7 @@ npx viruagent-cli cafe-write --provider naver \
 | `--content-file` | O* | HTML 파일 경로 | - |
 | `--tags` | - | 쉼표 구분 태그 | - |
 | `--image-urls` | - | 쉼표 구분 이미지 URL | - |
+| `--image-file` | - | 로컬 이미지 파일 경로 (JPEG/PNG) | - |
 | `--image-layout` | - | 이미지 레이아웃 (default/slide/collage) | default |
 
 *표시 항목은 둘 중 하나 필수
@@ -71,6 +72,12 @@ npx viruagent-cli cafe-write --provider naver \
 npx viruagent-cli cafe-write --provider naver \
   --cafe-id 23364048 --board-id 6 \
   --title "안녕하세요" --content "<p>가입인사 드립니다</p>"
+
+# 로컬 이미지 첨부
+npx viruagent-cli cafe-write --provider naver \
+  --cafe-id 23364048 --board-id 6 \
+  --title "오늘 사진" --content "<p>직접 찍은 사진입니다</p>" \
+  --image-file /path/to/photo.jpg
 
 # 이미지 슬라이드 포함
 npx viruagent-cli cafe-write --provider naver \

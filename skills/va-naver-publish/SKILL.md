@@ -38,6 +38,8 @@ npx viruagent-cli publish \
 | `--tags` | 쉼표 구분 태그 (5개) | - |
 | `--visibility` | public / private | public |
 | `--related-image-keywords` | 이미지 검색 키워드 (영어) | - |
+| `--image-file` | 로컬 이미지 파일 경로 (JPEG/PNG) | - |
+| `--image-urls` | 쉼표 구분 이미지 URL | - |
 | `--image-upload-limit` | 최대 이미지 수 | 5 |
 | `--minimum-image-count` | 최소 이미지 수 | 3 |
 | `--dry-run` | 파라미터만 검증 | false |
@@ -321,6 +323,7 @@ npx viruagent-cli publish \
 
 ## 이미지 규칙
 
+- `--image-file /path/to/image.jpg` — 로컬 파일 직접 업로드 (URL 없이 사용 가능)
 - `--related-image-keywords`에 영어 키워드 2~3개 (구체적일수록 좋음)
 - `--image-upload-limit 5`, `--minimum-image-count 3` 기본값
 - 소제목 위에 이미지 배치 — "시각 → 텍스트" 순서가 이해 빠름
