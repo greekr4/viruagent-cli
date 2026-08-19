@@ -260,6 +260,12 @@ const rateLimitCmd = program
 addProviderOption(rateLimitCmd);
 rateLimitCmd.action((opts) => execute('rate-limit-status', opts));
 
+const syncOperationsCmd = program
+  .command('sync-operations')
+  .description('Force re-sync X GraphQL operations');
+addProviderOption(syncOperationsCmd);
+syncOperationsCmd.action((opts) => execute('sync-operations', opts));
+
 const subscribeCmd = program
   .command('subscribe')
   .description('Subscribe to a subreddit (Reddit)');

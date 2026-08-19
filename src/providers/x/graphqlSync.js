@@ -7,6 +7,8 @@ const CACHE_TTL_MS = 3600000; // 1 hour
 const X_BASE_URL = 'https://x.com';
 const X_HOME_URL = X_BASE_URL + '/home';
 const X_ASSET_BASE_URL = 'https://abs.twimg.com';
+// ponytail: community-registry fallback; use browser network capture if it lags X.
+const GRAPHQL_REGISTRY_URL = 'https://raw.githubusercontent.com/fa0311/twitter-openapi/main/src/config/placeholder.json';
 // ponytail: HTML regex scan; switch to a browser/runtime manifest if X stops listing bundles here.
 const CLIENT_WEB_JS_URL_PATTERN = /(?:https?:)?\/\/abs\.twimg\.com\/responsive-web\/client-web\/[^"'<>\s]+\.js(?:\?[^"'<>\s]*)?|\/responsive-web\/client-web\/[^"'<>\s]+\.js(?:\?[^"'<>\s]*)?/g;
 
@@ -86,6 +88,32 @@ const parseOperations = (jsContent) => {
   return operations;
 };
 
+const fetchFallbackOperation = async (operationName) => {
+  try {
+    const res = await fetch(GRAPHQL_REGISTRY_URL, {
+      headers: { Accept: 'application/json' },
+      redirect: 'follow',
+    });
+    if (!res.ok) return null;
+
+    const operation = (await res.json())?.[operationName];
+    if (!operation?.queryId) return null;
+
+    return {
+      queryId: operation.queryId,
+      operationType: 'query',
+      featureSwitches: Object.entries(operation.features || {})
+        .filter(([, enabled]) => enabled)
+        .map(([name]) => name),
+      fieldToggles: Object.entries(operation.fieldToggles || {})
+        .filter(([, enabled]) => enabled)
+        .map(([name]) => name),
+    };
+  } catch {
+    return null;
+  }
+};
+
 const syncGraphqlOperations = async ({ force = false } = {}) => {
   // Check memory cache
   if (!force && memoryCache && Date.now() - memoryCacheTime < CACHE_TTL_MS) {
@@ -123,6 +151,12 @@ const syncGraphqlOperations = async ({ force = false } = {}) => {
     }
   }
 
+  // HomeLatestTimeline is lazy-loaded and may be absent from x.com/home HTML.
+  if (!operations.has('HomeLatestTimeline')) {
+    const fallback = await fetchFallbackOperation('HomeLatestTimeline');
+    if (fallback) operations.set('HomeLatestTimeline', fallback);
+  }
+
   if (operations.size === 0) {
     throw new Error('Failed to parse any GraphQL operations from X client-web bundles');
   }
@@ -151,6 +185,14 @@ const getOperation = async (operationName) => {
   if (!op) {
     ops = await syncGraphqlOperations({ force: true });
     op = ops.get(operationName);
+  }
+
+  if (!op) {
+    op = await fetchFallbackOperation(operationName);
+    if (op) {
+      ops.set(operationName, op);
+      memoryCache = ops;
+    }
   }
 
   if (!op) {
