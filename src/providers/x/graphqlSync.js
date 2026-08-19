@@ -1,10 +1,14 @@
 const fs = require('fs');
 const path = require('path');
+const { USER_AGENT } = require('./auth');
 
 const CACHE_TTL_MS = 3600000; // 1 hour
 
 const X_BASE_URL = 'https://x.com';
-const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36';
+const X_HOME_URL = X_BASE_URL + '/home';
+const X_ASSET_BASE_URL = 'https://abs.twimg.com';
+// ponytail: HTML regex scan; switch to a browser/runtime manifest if X stops listing bundles here.
+const CLIENT_WEB_JS_URL_PATTERN = /(?:https?:)?\/\/abs\.twimg\.com\/responsive-web\/client-web\/[^"'<>\s]+\.js(?:\?[^"'<>\s]*)?|\/responsive-web\/client-web\/[^"'<>\s]+\.js(?:\?[^"'<>\s]*)?/g;
 
 let memoryCache = null;
 let memoryCacheTime = 0;
@@ -32,15 +36,31 @@ const saveFileCache = (data) => {
   fs.writeFileSync(cachePath, JSON.stringify(data, null, 2), 'utf-8');
 };
 
-const fetchMainJsUrl = async () => {
-  const res = await fetch(X_BASE_URL, {
-    headers: { 'User-Agent': USER_AGENT },
+const extractClientWebJsUrls = (html) => {
+  const matches = html.match(CLIENT_WEB_JS_URL_PATTERN) || [];
+  return [...new Set(matches.map((url) => new URL(url, X_ASSET_BASE_URL).href))];
+};
+
+const fetchClientWebJsUrls = async () => {
+  const res = await fetch(X_HOME_URL, {
+    headers: {
+      'User-Agent': USER_AGENT,
+      Accept: 'text/html,application/xhtml+xml',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
     redirect: 'follow',
   });
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch X home. status=' + res.status + ', finalUrl=' + res.url);
+  }
+
   const html = await res.text();
-  const match = html.match(/main\.[a-f0-9]+\.js/);
-  if (!match) throw new Error('Failed to find main.js URL from x.com');
-  return `https://abs.twimg.com/responsive-web/client-web/${match[0]}`;
+  const urls = extractClientWebJsUrls(html);
+  if (urls.length === 0) {
+    throw new Error('Failed to find X client-web JS bundles. status=' + res.status + ', finalUrl=' + res.url);
+  }
+  return urls;
 };
 
 const parseOperations = (jsContent) => {
@@ -82,16 +102,29 @@ const syncGraphqlOperations = async ({ force = false } = {}) => {
     }
   }
 
-  // Fetch and parse from x.com
-  const mainJsUrl = await fetchMainJsUrl();
-  const res = await fetch(mainJsUrl, {
-    headers: { 'User-Agent': USER_AGENT },
-  });
-  const jsContent = await res.text();
-  const operations = parseOperations(jsContent);
+  // Fetch and parse from X home bundles
+  const bundleUrls = await fetchClientWebJsUrls();
+  const jsContents = await Promise.all(bundleUrls.map(async (url) => {
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': USER_AGENT },
+        redirect: 'follow',
+      });
+      return res.ok ? res.text() : '';
+    } catch {
+      return '';
+    }
+  }));
+
+  const operations = new Map();
+  for (const jsContent of jsContents) {
+    for (const [operationName, operation] of parseOperations(jsContent)) {
+      operations.set(operationName, operation);
+    }
+  }
 
   if (operations.size === 0) {
-    throw new Error('Failed to parse any GraphQL operations from main.js');
+    throw new Error('Failed to parse any GraphQL operations from X client-web bundles');
   }
 
   // Cache
@@ -100,7 +133,8 @@ const syncGraphqlOperations = async ({ force = false } = {}) => {
 
   const cacheObj = {
     syncedAt: Date.now(),
-    mainJsUrl,
+    mainJsUrl: bundleUrls.find((url) => /\/main\.[a-zA-Z0-9]+\.js(?:\?|$)/.test(url)) || bundleUrls[0],
+    bundleUrls,
     operationCount: operations.size,
     operations: Object.fromEntries(operations),
   };
@@ -134,6 +168,7 @@ const invalidateCache = () => {
 };
 
 module.exports = {
+  extractClientWebJsUrls,
   syncGraphqlOperations,
   getOperation,
   invalidateCache,
