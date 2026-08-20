@@ -379,10 +379,11 @@ const createXApiClient = ({ sessionPath }) => {
     const userResult = tweet?.core?.user_results?.result;
     const username = userResult?.core?.screen_name || userResult?.legacy?.screen_name;
     const name = userResult?.core?.name || userResult?.legacy?.name;
+    const text = tweet?.note_tweet?.note_tweet_results?.result?.text || legacy.full_text;
 
     return {
       id: legacy.id_str || tweet.rest_id,
-      text: legacy.full_text,
+      text,
       username,
       name,
       likeCount: legacy.favorite_count,
