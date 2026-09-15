@@ -59,6 +59,25 @@ HTML content is automatically converted to Naver SE Editor components. Supports 
 
 Images are uploaded via Naver Blog's dedicated image API and inserted into the post body.
 
+To place images at exact positions in the body, add `VIRU_IMAGE` markers to the HTML. The number is a 1-based index following the `--image-file` / `--image-urls` input order.
+
+```html
+<p>First chart explanation</p>
+<!-- VIRU_IMAGE:1 -->
+<p>Second chart explanation</p>
+<!-- VIRU_IMAGE:2 -->
+```
+
+```bash
+npx viruagent-cli publish --provider naver \
+  --title "Chart post" \
+  --content-file post.html \
+  --image-urls "./chart1.png,./chart2.png" \
+  --image-upload-limit 2
+```
+
+When no markers are present, the legacy behavior is preserved and uploaded images are placed before the body. Out-of-range, duplicate, or failed-upload markers are rejected before publishing.
+
 ## Session Storage
 
 ```

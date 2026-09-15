@@ -84,6 +84,7 @@ const createNaverProvider = ({ sessionPath, account }) => {
         const relatedImageKeywords = payload.relatedImageKeywords || [];
         const autoUploadImages = payload.autoUploadImages !== false;
         const imageUploadLimit = Number(payload.imageUploadLimit) || 2;
+        const minimumImageCount = Number(payload.minimumImageCount) || 1;
 
         await naverApi.initBlog();
         const rawCategories = await naverApi.getCategories();
@@ -114,6 +115,8 @@ const createNaverProvider = ({ sessionPath, account }) => {
 
         // Image upload (auto-search based on imageUrls + relatedImageKeywords)
         let imageComponents = [];
+        let imageComponentSlots = [];
+        let imageUploadErrors = [];
         const hasImageSources = imageUrls.length > 0 || relatedImageKeywords.length > 0;
         if (autoUploadImages && hasImageSources) {
           const token = await naverApi.getToken(categoryNo);
@@ -124,10 +127,21 @@ const createNaverProvider = ({ sessionPath, account }) => {
             imageUploadLimit,
           });
           imageComponents = uploadResult.components;
+          imageComponentSlots = uploadResult.componentSlots || imageComponents;
+          imageUploadErrors = uploadResult.errors || [];
+
+          if (imageComponents.length < minimumImageCount) {
+            const detail = imageUploadErrors.map((item) => `#${item.index}: ${item.error}`).join('; ');
+            throw new Error(`Naver image upload produced ${imageComponents.length} image(s); minimum required is ${minimumImageCount}.${detail ? ` ${detail}` : ''}`);
+          }
         }
 
-        // Convert HTML to editor components
-        const contentComponents = await convertHtmlToEditorComponents(naverApi, rawContent, imageComponents);
+        // Convert HTML to editor components. Slots preserve input indices for VIRU_IMAGE markers.
+        const contentComponents = await convertHtmlToEditorComponents(
+          naverApi,
+          rawContent,
+          imageComponentSlots.length > 0 ? imageComponentSlots : imageComponents
+        );
 
         const result = await naverApi.publishPost({
           title,
@@ -145,6 +159,7 @@ const createNaverProvider = ({ sessionPath, account }) => {
           openType,
           tags,
           imageCount: imageComponents.length,
+          imageUploadErrors,
           url: result.entryUrl || null,
           raw: result,
         };

@@ -59,22 +59,84 @@ const createImageComponent = (imgData) => ({
 
 const stripHtmlTags = (html) => html.replace(/<[^>]*>/g, '');
 
+const IMAGE_MARKER_PATTERN = /<!--\s*VIRU_IMAGE:(\d+)\s*-->/gi;
+
+const splitHtmlWithImageMarkers = (html = '') => {
+  const parts = [];
+  const pattern = new RegExp(IMAGE_MARKER_PATTERN.source, IMAGE_MARKER_PATTERN.flags);
+  let cursor = 0;
+  let match;
+
+  while ((match = pattern.exec(html)) !== null) {
+    if (match.index > cursor) {
+      parts.push({ type: 'html', content: html.slice(cursor, match.index) });
+    }
+    parts.push({ type: 'image', index: Number(match[1]) - 1 });
+    cursor = pattern.lastIndex;
+  }
+
+  if (cursor < html.length) {
+    parts.push({ type: 'html', content: html.slice(cursor) });
+  }
+
+  return parts;
+};
+
+const convertHtmlChunk = async (naverApi, html) => {
+  if (!String(html || '').trim()) return [];
+  const apiComponents = await naverApi.convertHtmlToComponents(html);
+  if (Array.isArray(apiComponents) && apiComponents.length > 0) return apiComponents;
+  return parseHtmlToComponents(html, []);
+};
+
 /**
  * Converts HTML to an array of Naver editor components.
  * Primary: Naver API (upconvert.editor.naver.com)
- * Fallback: Custom parsing
+ * Fallback: Custom parsing.
+ *
+ * Use <!-- VIRU_IMAGE:1 --> markers to place uploaded images at exact positions.
+ * Marker indices are 1-based and follow the --image-file/--image-urls input order.
+ * Without markers, uploaded images keep the legacy behavior and appear before the body.
  */
 const convertHtmlToEditorComponents = async (naverApi, html, imageComponents = []) => {
-  // 1. Try Naver API conversion
-  const apiComponents = await naverApi.convertHtmlToComponents(html);
-  if (Array.isArray(apiComponents) && apiComponents.length > 0) {
-    // Place images at the top of the post (Tistory style)
-    return [...imageComponents, ...apiComponents];
+  const slots = Array.isArray(imageComponents) ? imageComponents : [];
+  const activeImages = slots.filter(Boolean);
+  const parts = splitHtmlWithImageMarkers(html);
+  const hasMarkers = parts.some((part) => part.type === 'image');
+
+  if (!hasMarkers) {
+    const contentComponents = await convertHtmlChunk(naverApi, html);
+    return [...activeImages, ...contentComponents];
   }
 
-  // 2. Fallback: Custom parsing (images placed at the top)
-  const textComponents = parseHtmlToComponents(html, []);
-  return [...imageComponents, ...textComponents];
+  const result = [];
+  const used = new Set();
+
+  for (const part of parts) {
+    if (part.type === 'html') {
+      result.push(...await convertHtmlChunk(naverApi, part.content));
+      continue;
+    }
+
+    if (!Number.isInteger(part.index) || part.index < 0 || part.index >= slots.length) {
+      throw new Error(`Naver image marker VIRU_IMAGE:${part.index + 1} is out of range (uploaded slots: ${slots.length}).`);
+    }
+    if (used.has(part.index)) {
+      throw new Error(`Naver image marker VIRU_IMAGE:${part.index + 1} is duplicated.`);
+    }
+    if (!slots[part.index]) {
+      throw new Error(`Naver image marker VIRU_IMAGE:${part.index + 1} refers to an image that failed to upload.`);
+    }
+
+    result.push(slots[part.index]);
+    used.add(part.index);
+  }
+
+  slots.forEach((component, index) => {
+    if (component && !used.has(index)) result.push(component);
+  });
+
+  return result;
 };
 
 /**
@@ -194,5 +256,6 @@ module.exports = {
   parseHtmlToComponents,
   createTextComponent,
   createImageComponent,
+  splitHtmlWithImageMarkers,
   seId,
 };

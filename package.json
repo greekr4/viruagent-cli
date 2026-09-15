@@ -42,7 +42,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "start": "node bin/index.js"
+    "start": "node bin/index.js",
+    "test": "node --test test/*.test.js"
   },
   "engines": {
     "node": ">=18.0.0"

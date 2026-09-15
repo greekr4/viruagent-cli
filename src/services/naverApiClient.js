@@ -53,6 +53,33 @@ const createFetchController = () => {
   return { controller, timeout };
 };
 
+const resolveUploadUserId = (sessionKey, fallback = '') => {
+  try {
+    const decoded = Buffer.from(String(sessionKey || ''), 'base64').toString('utf8');
+    const parts = decoded.split('\x07');
+    const editorIndex = parts.findIndex((part) => /^blog_editor/i.test(part));
+    const candidate = editorIndex >= 0 ? parts[editorIndex + 1] : parts[3];
+    return String(candidate || '').trim() || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const inferImageMimeType = (filename = '') => {
+  const lower = String(filename).toLowerCase();
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.bmp')) return 'image/bmp';
+  return 'image/jpeg';
+};
+
+const extractUploadError = (xml = '') => {
+  const code = String(xml).match(/<code>([^<]+)<\/code>/i)?.[1];
+  const cause = String(xml).match(/<cause>([^<]+)<\/cause>/i)?.[1];
+  return code || cause || null;
+};
+
 const createNaverApiClient = ({ sessionPath }) => {
   let blogId = null;
 
@@ -218,10 +245,11 @@ const createNaverApiClient = ({ sessionPath }) => {
     const sessionKey = await getUploadSessionKey(token);
     if (!sessionKey) throw new Error('Failed to retrieve image upload session key.');
 
-    const uploadUrl = `https://blog.upphoto.naver.com/${sessionKey}/simpleUpload/0?userId=${encodeURIComponent(id)}&extractExif=true&extractAnimatedCnt=true&autorotate=true&extractDominantColor=false&denyAnimatedImage=false&skipXcamFiltering=false`;
+    const uploadUserId = resolveUploadUserId(sessionKey, id);
+    const uploadUrl = `https://blog.upphoto.naver.com/${sessionKey}/simpleUpload/0?userId=${encodeURIComponent(uploadUserId)}&extractExif=true&extractAnimatedCnt=true&autorotate=true&extractDominantColor=false&denyAnimatedImage=false&skipXcamFiltering=false`;
 
     const formData = new FormData();
-    const blob = new Blob([imageBuffer], { type: 'image/jpeg' });
+    const blob = new Blob([imageBuffer], { type: inferImageMimeType(filename) });
     formData.append('image', blob, filename || 'image.jpg');
 
     const { controller, timeout } = createFetchController();
@@ -243,7 +271,9 @@ const createNaverApiClient = ({ sessionPath }) => {
 
       const xml = await response.text();
       if (!xml.includes('<url>')) {
-        throw new Error('Image upload response does not contain a URL.');
+        const uploadError = extractUploadError(xml);
+        const detail = uploadError ? ` (${uploadError})` : '';
+        throw new Error(`Image upload response does not contain a URL${detail}.`);
       }
 
       const extractTag = (tag) => {
@@ -491,3 +521,8 @@ const createNaverApiClient = ({ sessionPath }) => {
 };
 
 module.exports = createNaverApiClient;
+module.exports._private = {
+  resolveUploadUserId,
+  inferImageMimeType,
+  extractUploadError,
+};

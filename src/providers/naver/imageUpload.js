@@ -45,6 +45,7 @@ const fetchImageBuffer = async (source) => {
  */
 const uploadAndCreateImageComponents = async (naverApi, imageSources, token) => {
   const components = [];
+  const componentSlots = new Array(imageSources.length).fill(null);
   const errors = [];
 
   for (let i = 0; i < imageSources.length; i++) {
@@ -53,15 +54,17 @@ const uploadAndCreateImageComponents = async (naverApi, imageSources, token) => 
       const { buffer, filename } = await fetchImageBuffer(source);
       const imgData = await naverApi.uploadImage(buffer, filename, token);
       if (imgData) {
-        imgData.represent = i === 0 ? 'true' : 'false';
-        components.push(createImageComponent(imgData));
+        imgData.represent = components.length === 0 ? 'true' : 'false';
+        const component = createImageComponent(imgData);
+        components.push(component);
+        componentSlots[i] = component;
       }
     } catch (error) {
-      errors.push({ source, error: error.message });
+      errors.push({ index: i + 1, source, error: error.message });
     }
   }
 
-  return { components, errors };
+  return { components, componentSlots, errors };
 };
 
 /**

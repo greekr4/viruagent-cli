@@ -59,6 +59,26 @@ HTML 본문을 네이버 SE Editor 컴포넌트 모델로 자동 변환합니다
 
 네이버 블로그 전용 이미지 업로드 API를 통해 이미지를 자동 업로드하고 본문에 삽입합니다.
 
+이미지를 본문 내 정확한 위치에 넣으려면 HTML에 `VIRU_IMAGE` 마커를 사용합니다. 번호는 `--image-file`, `--image-urls` 입력 순서 기준의 1-based index입니다.
+
+```html
+<p>첫 번째 차트 설명</p>
+<!-- VIRU_IMAGE:1 -->
+<p>두 번째 차트 설명</p>
+<!-- VIRU_IMAGE:2 -->
+```
+
+```bash
+npx viruagent-cli publish \
+  --provider naver \
+  --title "차트 글" \
+  --content-file post.html \
+  --image-urls "./chart1.png,./chart2.png" \
+  --image-upload-limit 2
+```
+
+마커가 없으면 기존 동작을 유지하여 업로드 이미지를 본문 앞에 배치합니다. 존재하지 않는 번호, 중복 번호, 업로드에 실패한 이미지를 가리키는 마커는 발행 전에 오류로 처리합니다.
+
 ## 세션 저장 위치
 
 ```
